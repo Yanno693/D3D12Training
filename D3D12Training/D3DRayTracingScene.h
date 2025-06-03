@@ -22,6 +22,8 @@ private:
 	D3DGenericBuffer m_oBVHScratch;
 	D3DGenericBuffer m_oInstanceUpdateBuffer;
 
+	D3DRayGenerationShader* m_oSceneRGShader = nullptr;
+
 	void CreateBVH(ID3D12GraphicsCommandList4* a_pCommandList);
 	void ReleaseBVH();
 

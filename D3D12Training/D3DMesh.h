@@ -21,6 +21,7 @@ private:
 
 	void ParseObject(std::string a_sPath); // Load the object
 	void ParseModel(std::string a_sPath); // Load the geometry of the object (ParseObject has to be called first)
+	void ParseModelGLTF(std::string a_sPath, std::string const a_sPathBin); // Load the geometry of the object from a GLTF file (ParseObject has to be called first)
 
 	UINT m_uiTriangleCount = 0; // Number of triangle in the mesh
 

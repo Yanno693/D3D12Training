@@ -526,9 +526,9 @@ int main()
     g_SceneData.oViewProjMatrix = DirectX::XMMatrixIdentity();
 
     D3DMesh oMesh;
-    //oMesh.Initialize("truc", D3DDevice::s_device.Get());
-    oMesh.InitializeDebug(D3DDevice::s_device.Get());
-    oMesh.InitializeDebug(D3DDevice::s_device.Get(), true);
+    oMesh.Initialize("truc", D3DDevice::s_device.Get());
+    //oMesh.InitializeDebug(D3DDevice::s_device.Get());
+    //oMesh.InitializeDebug(D3DDevice::s_device.Get(), true);
 
     g_MeshList.push_back(oMesh);
 

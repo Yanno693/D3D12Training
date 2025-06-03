@@ -1,5 +1,7 @@
 #include "D3DMesh.h"
 #include <map>
+#include <fstream>
+#include "json.hpp"
 
 GameScreenResolution g_ScreenResolution;
 std::vector<D3DMesh> g_MeshList;
@@ -256,6 +258,26 @@ void D3DMesh::ParseModel(std::string const a_sPath)
 	m_oVertexBuffer.WriteData(pVertexBufferData, (UINT)uiVertexBufferSize);
 
 	free(pVertexBufferData);	
+}
+
+void D3DMesh::ParseModelGLTF(std::string const a_sPath, std::string const a_sPathBin)
+{
+	using json = nlohmann::json;
+	
+	std::ifstream oGLTFStream(a_sPath);
+	std::ifstream oGLTFBinStream(a_sPathBin, std::ios::binary);
+	assert(oGLTFStream);
+	assert(oGLTFBinStream);
+
+	json oGLTFFileJson = json::parse(oGLTFStream);
+	assert(!oGLTFFileJson.empty());
+
+	auto o = oGLTFFileJson["meshes"][0]["primitives"][0]["attributes"]["POSITION"];
+	//auto o = oGLTFFileJson["meshes"];
+
+
+
+	//json data = json::parse(f);
 }
 
 
@@ -591,15 +613,18 @@ void D3DMesh::Initialize(std::string a_sPath, ID3D12Device* a_pDevice)
 
 	std::stringstream sObjectPath;
 	std::stringstream sModelPath;
+	std::stringstream sModelPathGLTF;
+	std::stringstream sModelPathGLTFBin;
 	sObjectPath << "./Objects/" << a_sPath << ".xml";
 	sModelPath << "./Models/" << a_sPath << ".dae";
+	sModelPathGLTF << "./Models/" << a_sPath << ".gltf";
+	sModelPathGLTFBin << "./Models/" << a_sPath << ".bin";
 
 	assert(m_pShader == nullptr);
 	
 	ParseObject(sObjectPath.str());
+	ParseModelGLTF(sModelPathGLTF.str(), sModelPathGLTFBin.str());
 	ParseModel(sModelPath.str());
-
-	
 
 	// 1. Load shader
 	//m_pShader = g_D3DShaderManager.RequestShader("test");
