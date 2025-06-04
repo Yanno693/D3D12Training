@@ -24,6 +24,7 @@ private:
 	void ParseModelGLTF(std::string a_sPath, std::string const a_sPathBin); // Load the geometry of the object from a GLTF file (ParseObject has to be called first)
 
 	UINT m_uiTriangleCount = 0; // Number of triangle in the mesh
+	UINT m_uiIndicesCount = 0; // Number of indices for the mesh vertices
 
 public:
 	Microsoft::WRL::ComPtr<ID3D12StateObject> m_pRayTracingPso; // TODO : PRIVATE !
@@ -52,6 +53,9 @@ public:
 	void InitializeDebug(ID3D12Device5* a_pDevice, bool a_bUsesRayTracing = false);
 	void Draw(ID3D12GraphicsCommandList* a_pCommandList);
 	void DrawRT(ID3D12GraphicsCommandList4* a_pCommandList);
+
+	void SetPosition(const GamePosition& a_rPosition);
+	GamePosition GetPosition();
 
 	bool m_bIsIndexed = false;
 };

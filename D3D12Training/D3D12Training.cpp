@@ -498,7 +498,7 @@ int main()
 {
     g_Camera.transform.position.x = 0;
     g_Camera.transform.position.y = 0;
-    g_Camera.transform.position.z = 0;
+    g_Camera.transform.position.z = -10;
 
     g_Camera.transform.rotation.x = 0;
     g_Camera.transform.rotation.y = 0;
@@ -518,8 +518,8 @@ int main()
     initD3DRenderTargets();
 
     g_D3DBufferManager.Initialize(D3DDevice::s_device.Get(), 20000);
-    g_D3DRayTracingScene.Initialize(D3DDevice::s_device.Get());
     g_D3DBufferManager.SetDebugName(L"SRV Descriptor Heap");
+    g_D3DRayTracingScene.Initialize(D3DDevice::s_device.Get());
 
     g_D3DBufferManager.InitializeConstantBuffer(&g_SceneConstantBuffer, sizeof(_SceneData));
     g_SceneConstantBuffer.SetDebugName(L"Scene Constant Buffer");

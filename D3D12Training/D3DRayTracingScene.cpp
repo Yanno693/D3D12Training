@@ -1,7 +1,11 @@
 #include "D3DRayTracingScene.h"
+#include "D3DDevice.h"
 
 void D3DRayTracingScene::Initialize(ID3D12Device5* a_pDevice)
 {
+	if (!D3DDevice::isRayTracingEnabled())
+		return;
+	
 	if (!m_bInitialized)
 	{
 		m_pDevice = a_pDevice;
@@ -13,11 +17,17 @@ void D3DRayTracingScene::Initialize(ID3D12Device5* a_pDevice)
 
 void D3DRayTracingScene::setRenderTarget(D3DTexture* a_pTexture)
 {
+	if (!D3DDevice::isRayTracingEnabled())
+		return;
+	
 	m_pRenderTarget = a_pTexture;
 }
 
 void D3DRayTracingScene::SubmitForDraw(D3DMesh* a_pMesh)
 {
+	if (!D3DDevice::isRayTracingEnabled())
+		return;
+	
 	assert(m_bInitialized);
 	assert(m_pDevice);
 	
@@ -26,7 +36,9 @@ void D3DRayTracingScene::SubmitForDraw(D3DMesh* a_pMesh)
 
 void D3DRayTracingScene::DrawScene(ID3D12GraphicsCommandList4* a_pCommandList)
 {
-	
+	if (!D3DDevice::isRayTracingEnabled())
+		return;
+
 	assert(m_bInitialized);
 	assert(m_pDevice);
 	assert(m_pRenderTarget);
@@ -70,7 +82,9 @@ void D3DRayTracingScene::DrawScene(ID3D12GraphicsCommandList4* a_pCommandList)
 
 void D3DRayTracingScene::CreateBVH(ID3D12GraphicsCommandList4* a_pCommandList)
 {
-	
+	if (!D3DDevice::isRayTracingEnabled())
+		return;
+
 	g_D3DBufferManager.InitializeGenericBuffer(&m_oInstanceUpdateBuffer, sizeof(D3D12_RAYTRACING_INSTANCE_DESC) * m_apCurrentSceneMesh.size());
 	m_oInstanceUpdateBuffer.SetDebugName(L"RT Scene Instance Buffer Update");
 
@@ -123,6 +137,9 @@ void D3DRayTracingScene::CreateBVH(ID3D12GraphicsCommandList4* a_pCommandList)
 
 void D3DRayTracingScene::ReleaseBVH()
 {
+	if (!D3DDevice::isRayTracingEnabled())
+		return;
+	
 	/*
 	m_oInstanceUpdateBuffer.m_pResource->Release();
 	m_oBVH.m_pResource->Release();
@@ -143,6 +160,9 @@ void D3DRayTracingScene::ReleaseBVH()
 
 void D3DRayTracingScene::flushSceneMesh()
 {
+	if (!D3DDevice::isRayTracingEnabled())
+		return;
+	
 	assert(m_bInitialized);
 	assert(m_pDevice);
 	m_apCurrentSceneMesh.clear();

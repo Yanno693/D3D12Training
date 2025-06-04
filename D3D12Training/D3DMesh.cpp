@@ -260,22 +260,67 @@ void D3DMesh::ParseModel(std::string const a_sPath)
 	free(pVertexBufferData);	
 }
 
+size_t GetGLTFTypeSize(UINT a_uiType)
+{
+	switch (a_uiType)
+	{
+	case 5120:
+	case 5121:
+		return sizeof(BYTE);
+		break;
+	case 5122:
+	case 5123:
+		return sizeof(USHORT);
+		break;
+	default:
+		return sizeof(UINT);
+		break;
+	}
+}
+
 void D3DMesh::ParseModelGLTF(std::string const a_sPath, std::string const a_sPathBin)
 {
 	using json = nlohmann::json;
 	
 	std::ifstream oGLTFStream(a_sPath);
-	std::ifstream oGLTFBinStream(a_sPathBin, std::ios::binary);
+	std::ifstream oGLTFBinStream(a_sPathBin, std::ios::binary | :: std::ios::ate);
 	assert(oGLTFStream);
 	assert(oGLTFBinStream);
+
+	char* oGLTFBinData = (char*)malloc(oGLTFBinStream.tellg());
+	assert(oGLTFBinData != nullptr);
+	size_t oGLTFBinDataLength = oGLTFBinStream.tellg();
+	oGLTFBinStream.seekg(0);
+	oGLTFBinStream.read(oGLTFBinData, oGLTFBinDataLength);
+	oGLTFBinStream.close();
 
 	json oGLTFFileJson = json::parse(oGLTFStream);
 	assert(!oGLTFFileJson.empty());
 
-	auto o = oGLTFFileJson["meshes"][0]["primitives"][0]["attributes"]["POSITION"];
+	UINT oGLTFPositionAccessorIndex = oGLTFFileJson["meshes"][0]["primitives"][0]["attributes"]["POSITION"].get<UINT>();
+	UINT oGLTFPositionBufferViewID = oGLTFFileJson["accessors"][oGLTFPositionAccessorIndex]["bufferView"].get<UINT>();
+	UINT oGLTFPositionCount = oGLTFFileJson["accessors"][oGLTFPositionAccessorIndex]["count"].get<UINT>();
+	UINT oGLTFPositionDataInBuffer = oGLTFFileJson["bufferViews"][oGLTFPositionBufferViewID]["byteOffset"].get<UINT>();
+	UINT oGLTFPositionLengthInBuffer = oGLTFFileJson["bufferViews"][oGLTFPositionBufferViewID]["byteLength"].get<UINT>();
+
+	UINT oGLTFIndicesAccessorIndex = oGLTFFileJson["meshes"][0]["primitives"][0]["indices"].get<UINT>();
+	UINT oGLTFIndicesBufferViewID = oGLTFFileJson["accessors"][oGLTFIndicesAccessorIndex]["bufferView"].get<UINT>();
+	UINT oGLTFIndicesCount = oGLTFFileJson["accessors"][oGLTFIndicesAccessorIndex]["count"].get<UINT>();
+	UINT oGLTFIndicesType = oGLTFFileJson["accessors"][oGLTFIndicesAccessorIndex]["componentType"].get<UINT>();
+	UINT oGLTFIndicesDataInBuffer = oGLTFFileJson["bufferViews"][oGLTFIndicesBufferViewID]["byteOffset"].get<UINT>();
+	UINT oGLTFIndicesLengthInBuffer = oGLTFFileJson["bufferViews"][oGLTFIndicesBufferViewID]["byteLength"].get<UINT>();
+
+	g_D3DBufferManager.InitializeVertexBuffer(&m_oVertexBuffer, oGLTFPositionLengthInBuffer, oGLTFPositionLengthInBuffer / oGLTFPositionCount);
+	m_oVertexBuffer.WriteData(oGLTFBinData + oGLTFPositionDataInBuffer, oGLTFPositionLengthInBuffer);
+	g_D3DBufferManager.InitializeIndexBuffer(&m_oIndexBuffer, oGLTFIndicesLengthInBuffer, GetGLTFTypeSize(oGLTFIndicesType));
+	m_oIndexBuffer.WriteData(oGLTFBinData + oGLTFIndicesDataInBuffer, oGLTFIndicesLengthInBuffer);
+
+	m_uiIndicesCount = oGLTFIndicesCount;
+	m_uiTriangleCount = oGLTFPositionCount / 3;
+
+	free(oGLTFBinData);
+	oGLTFStream.close();
 	//auto o = oGLTFFileJson["meshes"];
-
-
 
 	//json data = json::parse(f);
 }
@@ -538,7 +583,6 @@ void D3DMesh::InitializeDebug(ID3D12Device5* a_pDevice, bool a_bUsesRayTracing)
 		oDxPs.BytecodeLength = m_pShader->m_pPS->m_uiByteCodeSize;
 		oDxPs.pShaderBytecode = m_pShader->m_pPS->m_pByteCode;
 
-
 		D3D12_ROOT_PARAMETER oVBSceneRootParameter = {};
 		oVBSceneRootParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
 		oVBSceneRootParameter.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
@@ -744,6 +788,7 @@ void D3DMesh::Draw(ID3D12GraphicsCommandList* a_pCommandList)
 	D3D12_VERTEX_BUFFER_VIEW vViews[1] = { m_oVertexBuffer.m_oView };
 	
 	a_pCommandList->IASetVertexBuffers(0, 1, vViews);
+	a_pCommandList->IASetIndexBuffer(&m_oIndexBuffer.m_oView);
 	a_pCommandList->SetGraphicsRootSignature(m_pRootSignature.Get());
 
 	a_pCommandList->SetGraphicsRootConstantBufferView(0, g_SceneConstantBuffer.m_pResource->GetGPUVirtualAddress());
@@ -768,7 +813,16 @@ void D3DMesh::Draw(ID3D12GraphicsCommandList* a_pCommandList)
 	a_pCommandList->RSSetViewports(1, &viewport);
 	a_pCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	a_pCommandList->SetPipelineState(m_pPso.Get());
-	a_pCommandList->DrawInstanced(3 * m_uiTriangleCount, 1, 0, 0);
+	//a_pCommandList->DrawInstanced(3 * m_uiTriangleCount, 1, 0, 0);
+
+	if (m_uiIndicesCount != 0)
+	{
+		a_pCommandList->DrawIndexedInstanced(m_uiIndicesCount, 1, 0, 0, 0);
+	}
+	else
+	{
+		a_pCommandList->DrawInstanced(3 * m_uiTriangleCount, 1, 0, 0);
+	}
 }
 
 void D3DMesh::DrawRT(ID3D12GraphicsCommandList4* a_pCommandList)
@@ -788,4 +842,14 @@ void D3DMesh::DrawRT(ID3D12GraphicsCommandList4* a_pCommandList)
 	oRayDispatch.Depth = 1;
 
 	a_pCommandList->DispatchRays(&oRayDispatch);
+}
+
+void D3DMesh::SetPosition(const GamePosition& a_rPosition)
+{
+	m_oTransform.position = a_rPosition;
+}
+
+GamePosition D3DMesh::GetPosition()
+{
+	return m_oTransform.position;
 }

@@ -109,7 +109,7 @@ void D3DBufferManager::InitializeGenericBuffer(D3DGenericBuffer* a_pGenericBuffe
     a_pGenericBuffer->m_uiResourceSize = a_uiSizeInBytes;
 }
 
-void D3DBufferManager::InitializeIndexBuffer(D3DIndexBuffer* a_pIndexBuffer, UINT const a_uiSizeInBytes, D3D12_RESOURCE_STATES const a_eDefaultState)
+void D3DBufferManager::InitializeIndexBuffer(D3DIndexBuffer* a_pIndexBuffer, UINT const a_uiSizeInBytes, bool a_bIsInt16, D3D12_RESOURCE_STATES const a_eDefaultState)
 {
     assert(m_pDevice != nullptr);
 
@@ -143,14 +143,9 @@ void D3DBufferManager::InitializeIndexBuffer(D3DIndexBuffer* a_pIndexBuffer, UIN
     D3D12_INDEX_BUFFER_VIEW oView;
     oView.BufferLocation = a_pIndexBuffer->m_pResource->GetGPUVirtualAddress();
     oView.SizeInBytes = a_uiSizeInBytes;
-    oView.Format = DXGI_FORMAT_R32_UINT;
-
-    //D3D12_VERTEX_BUFFER_VIEW oView;
-    //oView.SizeInBytes = a_uiSizeInBytes;
-    //oView.StrideInBytes = a_uiVertexSize;
+    oView.Format = a_bIsInt16 ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;
 
     IncrementOffset();
-
 
     a_pIndexBuffer->m_eCurrentState = a_eDefaultState;
     a_pIndexBuffer->m_oView = oView;
