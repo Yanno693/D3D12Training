@@ -10,6 +10,14 @@
 
 #include "tinyxml2.h"
 
+struct ExtraPtr
+{
+	char* ptr = nullptr;
+	UINT size = 0;
+	UINT stride = 0;
+	UINT count = 0;
+};
+
 class D3DMesh
 {
 private:
@@ -22,6 +30,19 @@ private:
 	void ParseObject(std::string a_sPath); // Load the object
 	void ParseModel(std::string a_sPath); // Load the geometry of the object (ParseObject has to be called first)
 	void ParseModelGLTF(std::string a_sPath, std::string const a_sPathBin); // Load the geometry of the object from a GLTF file (ParseObject has to be called first)
+
+	void CreateGPUBuffers();
+
+	ExtraPtr m_oMeshPositionData = {};
+	ExtraPtr m_oMeshUVData = {};
+	ExtraPtr m_oMeshIndicesData = {};
+
+	/*
+	UINT m_uiVertexElemCount = 0;
+	UINT m_uiVertexPosSize = 0;
+	UINT m_uiVertexUVSize = 0;
+	char* m_uiMeshVertexPositionData = 0;
+	*/
 
 	UINT m_uiTriangleCount = 0; // Number of triangle in the mesh
 	UINT m_uiIndicesCount = 0; // Number of indices for the mesh vertices

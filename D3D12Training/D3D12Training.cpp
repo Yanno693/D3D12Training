@@ -96,7 +96,7 @@ DirectX::XMMATRIX GetViewProjFromCamera(GameCamera a_oCamera, GameScreenResoluti
     lookAt = XMVector3TransformCoord(lookAt, rotation) + EyePos;
 
 
-    View = translation * XMMatrixLookAtLH(EyePos, lookAt, up);
+    //View = translation * XMMatrixLookAtLH(EyePos, lookAt, up);
 
     /*
     XMMATRIX Projection = XMMatrixPerspectiveLH(
@@ -175,7 +175,7 @@ DirectX::XMMATRIX GetInvViewFromCamera(GameCamera a_oCamera)
     lookAt = XMVector3TransformCoord(lookAt, rotation) + EyePos;
 
 
-    View = translation * XMMatrixLookAtLH(EyePos, lookAt, up);
+    //View = translation * XMMatrixLookAtLH(EyePos, lookAt, up);
 
     XMMATRIX InvView = XMMatrixInverse(nullptr, View);
 
@@ -454,6 +454,7 @@ void RenderLoop()
     g_D3DBackBuffers[BackBufferIndex].TransisitonState(g_defaultCommandList.Get(), D3D12_RESOURCE_STATE_COMMON);
 
     // Very dirty copy into the backbuffer
+    if(D3DDevice::isRayTracingEnabled())
     {
         test_rt->GetD3DTexture()->WaitForUAV(g_defaultCommandList.Get());
         g_D3DBackBuffers[BackBufferIndex].TransisitonState(g_defaultCommandList.Get(), D3D12_RESOURCE_STATE_COPY_DEST);
@@ -526,7 +527,7 @@ int main()
     g_SceneData.oViewProjMatrix = DirectX::XMMatrixIdentity();
 
     D3DMesh oMesh;
-    oMesh.Initialize("truc", D3DDevice::s_device.Get());
+    oMesh.Initialize("monkey", D3DDevice::s_device.Get());
     //oMesh.InitializeDebug(D3DDevice::s_device.Get());
     //oMesh.InitializeDebug(D3DDevice::s_device.Get(), true);
 

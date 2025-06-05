@@ -303,6 +303,14 @@ void D3DMesh::ParseModelGLTF(std::string const a_sPath, std::string const a_sPat
 	UINT oGLTFPositionDataInBuffer = oGLTFFileJson["bufferViews"][oGLTFPositionBufferViewID]["byteOffset"].get<UINT>();
 	UINT oGLTFPositionLengthInBuffer = oGLTFFileJson["bufferViews"][oGLTFPositionBufferViewID]["byteLength"].get<UINT>();
 
+	UINT oGLTFUVAccessorIndex = oGLTFFileJson["meshes"][0]["primitives"][0]["attributes"]["TEXCOORD_0"].get<UINT>();
+	UINT oGLTFUVBufferViewID = oGLTFFileJson["accessors"][oGLTFUVAccessorIndex]["bufferView"].get<UINT>();
+	UINT oGLTFUVCount = oGLTFFileJson["accessors"][oGLTFUVAccessorIndex]["count"].get<UINT>();
+	UINT oGLTFUVDataInBuffer = oGLTFFileJson["bufferViews"][oGLTFUVBufferViewID]["byteOffset"].get<UINT>();
+	UINT oGLTFUVLengthInBuffer = oGLTFFileJson["bufferViews"][oGLTFUVBufferViewID]["byteLength"].get<UINT>();
+
+	assert(oGLTFPositionCount == oGLTFUVCount);
+
 	UINT oGLTFIndicesAccessorIndex = oGLTFFileJson["meshes"][0]["primitives"][0]["indices"].get<UINT>();
 	UINT oGLTFIndicesBufferViewID = oGLTFFileJson["accessors"][oGLTFIndicesAccessorIndex]["bufferView"].get<UINT>();
 	UINT oGLTFIndicesCount = oGLTFFileJson["accessors"][oGLTFIndicesAccessorIndex]["count"].get<UINT>();
@@ -310,19 +318,59 @@ void D3DMesh::ParseModelGLTF(std::string const a_sPath, std::string const a_sPat
 	UINT oGLTFIndicesDataInBuffer = oGLTFFileJson["bufferViews"][oGLTFIndicesBufferViewID]["byteOffset"].get<UINT>();
 	UINT oGLTFIndicesLengthInBuffer = oGLTFFileJson["bufferViews"][oGLTFIndicesBufferViewID]["byteLength"].get<UINT>();
 
-	g_D3DBufferManager.InitializeVertexBuffer(&m_oVertexBuffer, oGLTFPositionLengthInBuffer, oGLTFPositionLengthInBuffer / oGLTFPositionCount);
-	m_oVertexBuffer.WriteData(oGLTFBinData + oGLTFPositionDataInBuffer, oGLTFPositionLengthInBuffer);
-	g_D3DBufferManager.InitializeIndexBuffer(&m_oIndexBuffer, oGLTFIndicesLengthInBuffer, GetGLTFTypeSize(oGLTFIndicesType));
-	m_oIndexBuffer.WriteData(oGLTFBinData + oGLTFIndicesDataInBuffer, oGLTFIndicesLengthInBuffer);
+	m_oMeshPositionData.ptr = (char*)malloc(oGLTFPositionLengthInBuffer);
+	assert(m_oMeshPositionData.ptr != nullptr);
+	memcpy(m_oMeshPositionData.ptr, oGLTFBinData + oGLTFPositionDataInBuffer, oGLTFPositionLengthInBuffer);
+	m_oMeshPositionData.size = oGLTFPositionLengthInBuffer;
+	m_oMeshPositionData.stride = oGLTFPositionLengthInBuffer / oGLTFPositionCount;
+	m_oMeshPositionData.count = oGLTFPositionCount;
+
+	m_oMeshUVData.ptr = (char*)malloc(oGLTFUVLengthInBuffer);
+	assert(m_oMeshUVData.ptr != nullptr);
+	memcpy(m_oMeshUVData.ptr, oGLTFBinData + oGLTFUVDataInBuffer, oGLTFUVLengthInBuffer);
+	m_oMeshUVData.size = oGLTFUVLengthInBuffer;
+	m_oMeshUVData.stride = oGLTFUVLengthInBuffer / oGLTFUVCount;
+	m_oMeshUVData.count = oGLTFUVCount;
+
+	m_oMeshIndicesData.ptr = (char*)malloc(oGLTFIndicesLengthInBuffer);
+	assert(m_oMeshIndicesData.ptr != nullptr);
+	memcpy(m_oMeshIndicesData.ptr, oGLTFBinData + oGLTFIndicesDataInBuffer, oGLTFIndicesLengthInBuffer);
+	m_oMeshIndicesData.size = oGLTFIndicesLengthInBuffer;
+	m_oMeshIndicesData.stride = GetGLTFTypeSize(oGLTFIndicesType);
+	m_oMeshIndicesData.count = oGLTFIndicesCount;
 
 	m_uiIndicesCount = oGLTFIndicesCount;
 	m_uiTriangleCount = oGLTFPositionCount / 3;
 
 	free(oGLTFBinData);
 	oGLTFStream.close();
-	//auto o = oGLTFFileJson["meshes"];
+}
 
-	//json data = json::parse(f);
+void D3DMesh::CreateGPUBuffers()
+{
+	char* oVertexData = (char*)malloc(m_oMeshPositionData.size + m_oMeshUVData.size);
+	assert(oVertexData != nullptr);
+
+	char* oVertexDataIt = oVertexData;
+	
+	for (UINT i = 0; i < m_oMeshPositionData.count; i++)
+	{
+		memcpy(oVertexDataIt, m_oMeshPositionData.ptr + i * m_oMeshPositionData.stride, m_oMeshPositionData.stride);
+		memcpy(oVertexDataIt + m_oMeshPositionData.stride, m_oMeshUVData.ptr + i * m_oMeshUVData.stride, m_oMeshUVData.stride);
+		
+		oVertexDataIt += m_oMeshPositionData.stride + m_oMeshUVData.stride;
+	}
+
+	g_D3DBufferManager.InitializeVertexBuffer(&m_oVertexBuffer, m_oMeshPositionData.size + m_oMeshUVData.size, m_oMeshPositionData.stride + m_oMeshUVData.stride);
+	m_oVertexBuffer.WriteData(oVertexData, m_oMeshPositionData.size + m_oMeshUVData.size);
+
+	g_D3DBufferManager.InitializeIndexBuffer(&m_oIndexBuffer, m_oMeshIndicesData.size, m_oMeshIndicesData.stride == sizeof(USHORT));
+	m_oIndexBuffer.WriteData(m_oMeshIndicesData.ptr, m_oMeshIndicesData.size);
+
+	free(oVertexData);
+	free(m_oMeshPositionData.ptr);
+	free(m_oMeshUVData.ptr);
+	free(m_oMeshIndicesData.ptr);
 }
 
 
@@ -668,7 +716,9 @@ void D3DMesh::Initialize(std::string a_sPath, ID3D12Device* a_pDevice)
 	
 	ParseObject(sObjectPath.str());
 	ParseModelGLTF(sModelPathGLTF.str(), sModelPathGLTFBin.str());
-	ParseModel(sModelPath.str());
+	//ParseModel(sModelPath.str());
+
+	CreateGPUBuffers();
 
 	// 1. Load shader
 	//m_pShader = g_D3DShaderManager.RequestShader("test");
