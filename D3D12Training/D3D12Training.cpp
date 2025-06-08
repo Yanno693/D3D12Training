@@ -11,6 +11,8 @@
 #include "D3DDevice.h"
 #include "D3DRenderTargetManager.h"
 
+#include <Xinput.h>
+
 D3DRenderTargetManager g_D3DRenderTargetManager;
 
 // Game Logic structures and functions
@@ -21,8 +23,16 @@ extern GameScreenResolution g_ScreenResolution;
 D3DTexture* test_texture;
 D3DRenderTarget* test_rt;
 
-void InputUpdate(float const a_fDeltaTime)
+DirectX::XMVECTOR up{ 0.0f, 1, 0, 0 };
+
+void InputUpdate(float a_fDeltaTime)
 {
+    using namespace DirectX;
+
+    //XMVECTOR forware = XMVector3Transform(XMVECTOR(0, 0, 1), g_Camera.transform.rotation.rotationMatrix);
+
+    a_fDeltaTime *= 5;
+    
     if (GetKeyState(VK_UP) & 0x8000)
     {
         g_Camera.transform.position.z += a_fDeltaTime;
@@ -40,22 +50,56 @@ void InputUpdate(float const a_fDeltaTime)
         g_Camera.transform.position.x -= a_fDeltaTime;
     }
 
-    if (GetKeyState('Z') & 0x8000)
-    {
-        g_Camera.transform.rotation.x -= a_fDeltaTime;
-    }
-    if (GetKeyState('S') & 0x8000)
-    {
-        g_Camera.transform.rotation.x += a_fDeltaTime;
-    }
     if (GetKeyState('D') & 0x8000)
     {
         g_Camera.transform.rotation.y += a_fDeltaTime;
+        //g_Camera.transform.rotation.rotationMatrix *= DirectX::XMMatrixRotationY(-a_fDeltaTime * 0.2);
+        g_Camera.transform.rotation.rotationMatrix *= DirectX::XMMatrixRotationAxis(up, -a_fDeltaTime * 0.2);
     }
     if (GetKeyState('Q') & 0x8000)
     {
         g_Camera.transform.rotation.y -= a_fDeltaTime;
+        //g_Camera.transform.rotation.rotationMatrix *= DirectX::XMMatrixRotationY(a_fDeltaTime * 0.2);
+        g_Camera.transform.rotation.rotationMatrix *= DirectX::XMMatrixRotationAxis(up, a_fDeltaTime * 0.2);
     }
+
+    XMVECTOR right(g_Camera.transform.rotation.rotationMatrix.r[0]);
+
+    if (GetKeyState('Z') & 0x8000)
+    {
+        g_Camera.transform.rotation.x -= a_fDeltaTime;
+        //g_Camera.transform.rotation.rotationMatrix *= DirectX::XMMatrixRotationX(a_fDeltaTime * 0.2);
+        g_Camera.transform.rotation.rotationMatrix *= DirectX::XMMatrixRotationAxis(right, a_fDeltaTime * 0.2);
+    }
+    if (GetKeyState('S') & 0x8000)
+    {
+        g_Camera.transform.rotation.x += a_fDeltaTime;
+        //g_Camera.transform.rotation.rotationMatrix *= DirectX::XMMatrixRotationX(-a_fDeltaTime * 0.2);
+        g_Camera.transform.rotation.rotationMatrix *= DirectX::XMMatrixRotationAxis(right, -a_fDeltaTime * 0.2);
+    }
+
+    DWORD dwResult;
+    XINPUT_STATE state;
+    ZeroMemory(&state, sizeof(XINPUT_STATE));
+    dwResult = XInputGetState(0, &state);
+
+    if (dwResult == ERROR_SUCCESS)
+    {
+        float RX = state.Gamepad.sThumbRX;
+        float RY = state.Gamepad.sThumbRY;
+
+        float deadzone = sqrt(RX * RX + RY * RY);
+
+        if (deadzone > XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE)
+        {
+            g_Camera.transform.rotation.rotationMatrix *= DirectX::XMMatrixRotationAxis(up, -RX * a_fDeltaTime * 0.00002);
+            XMVECTOR right(g_Camera.transform.rotation.rotationMatrix.r[0]);
+            g_Camera.transform.rotation.rotationMatrix *= DirectX::XMMatrixRotationAxis(right, RY * a_fDeltaTime * 0.00002);
+        }
+        //printf("Forward : X %f Y %f\n", RX, RY);
+    }
+
+    //printf("Forward : %f %f %f %f\n", forward.m128_f32[0], forward.m128_f32[1], forward.m128_f32[2], forward.m128_f32[3]);
 }
 
 DirectX::XMMATRIX GetViewProjFromCamera(GameCamera a_oCamera, GameScreenResolution a_oResolution)
@@ -74,7 +118,8 @@ DirectX::XMMATRIX GetViewProjFromCamera(GameCamera a_oCamera, GameScreenResoluti
         -a_oCamera.transform.rotation.z
     );
 
-    XMMATRIX View = translation * rotation;
+    //XMMATRIX View = translation * rotation;
+    XMMATRIX View = translation * a_oCamera.transform.rotation.rotationMatrix;
 
 
     XMVECTOR lookAt; // Forward-oriented vector
@@ -504,6 +549,7 @@ int main()
     g_Camera.transform.rotation.x = 0;
     g_Camera.transform.rotation.y = 0;
     g_Camera.transform.rotation.z = 0;
+    g_Camera.transform.rotation.rotationMatrix = DirectX::XMMatrixIdentity();
 
     g_ScreenResolution.width = 1280;
     g_ScreenResolution.height = 720;

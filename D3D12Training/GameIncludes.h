@@ -33,6 +33,7 @@ struct GamePosition
 struct GameRotation
 {
 	float x, y, z;
+	DirectX::XMMATRIX rotationMatrix;
 };
 
 struct GameScale
