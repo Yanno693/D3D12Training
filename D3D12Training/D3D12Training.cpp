@@ -64,6 +64,7 @@ void InputUpdate(float a_fDeltaTime)
     }
 
     XMVECTOR right(g_Camera.transform.rotation.rotationMatrix.r[0]);
+    XMVECTOR forward(g_Camera.transform.rotation.rotationMatrix.r[2]);
 
     if (GetKeyState('Z') & 0x8000)
     {
@@ -87,6 +88,8 @@ void InputUpdate(float a_fDeltaTime)
     {
         float RX = state.Gamepad.sThumbRX;
         float RY = state.Gamepad.sThumbRY;
+        float LX = state.Gamepad.sThumbLX;
+        float LY = state.Gamepad.sThumbLY;
 
         float deadzone = sqrt(RX * RX + RY * RY);
 
@@ -95,6 +98,23 @@ void InputUpdate(float a_fDeltaTime)
             g_Camera.transform.rotation.rotationMatrix *= DirectX::XMMatrixRotationAxis(up, -RX * a_fDeltaTime * 0.00002);
             XMVECTOR right(g_Camera.transform.rotation.rotationMatrix.r[0]);
             g_Camera.transform.rotation.rotationMatrix *= DirectX::XMMatrixRotationAxis(right, RY * a_fDeltaTime * 0.00002);
+        }
+
+        deadzone = sqrt(LX * LX + LY * LY);
+        if (deadzone > XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE)
+        {
+            XMVECTOR right(g_Camera.transform.rotation.rotationMatrix.r[0]);
+
+            XMMATRIX forwardTranslation = XMMatrixTranslationFromVector(forward) * LY * 0.00002;
+            //XMMATRIX forwardTranslation = XMMatrixIdentity();
+            XMMATRIX rightTranslation = XMMatrixTranslationFromVector(right) * LX * 0.00002;
+            //XMMATRIX rightTranslation = XMMatrixIdentity();
+
+            XMMATRIX finalTranslation = forwardTranslation + rightTranslation;
+
+            g_Camera.transform.position.x += finalTranslation.r[3].m128_f32[0];
+            g_Camera.transform.position.y += finalTranslation.r[3].m128_f32[1];
+            g_Camera.transform.position.z += finalTranslation.r[3].m128_f32[2];
         }
         //printf("Forward : X %f Y %f\n", RX, RY);
     }
