@@ -49,6 +49,14 @@ void InputUpdate(float a_fDeltaTime)
     {
         g_Camera.transform.position.x -= a_fDeltaTime;
     }
+    if (GetKeyState(VK_CONTROL) & 0x8000)
+    {
+        g_Camera.transform.position.y -= a_fDeltaTime;
+    }
+    if (GetKeyState(VK_SPACE) & 0x8000)
+    {
+        g_Camera.transform.position.y += a_fDeltaTime;
+    }
 
     if (GetKeyState('D') & 0x8000)
     {
@@ -92,23 +100,17 @@ void InputUpdate(float a_fDeltaTime)
         float LY = state.Gamepad.sThumbLY;
 
         float deadzone = sqrt(RX * RX + RY * RY);
-
         if (deadzone > XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE)
         {
-            g_Camera.transform.rotation.rotationMatrix *= DirectX::XMMatrixRotationAxis(up, -RX * a_fDeltaTime * 0.00002);
-            XMVECTOR right(g_Camera.transform.rotation.rotationMatrix.r[0]);
-            g_Camera.transform.rotation.rotationMatrix *= DirectX::XMMatrixRotationAxis(right, RY * a_fDeltaTime * 0.00002);
+            g_Camera.transform.rotation.rotationMatrix *= DirectX::XMMatrixRotationAxis(up, RX * a_fDeltaTime * 0.00002);
+            g_Camera.transform.rotation.rotationMatrix *= DirectX::XMMatrixRotationAxis(right, -RY * a_fDeltaTime * 0.00002);
         }
 
         deadzone = sqrt(LX * LX + LY * LY);
         if (deadzone > XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE)
         {
-            XMVECTOR right(g_Camera.transform.rotation.rotationMatrix.r[0]);
-
-            XMMATRIX forwardTranslation = XMMatrixTranslationFromVector(forward) * LY * 0.00002;
-            //XMMATRIX forwardTranslation = XMMatrixIdentity();
-            XMMATRIX rightTranslation = XMMatrixTranslationFromVector(right) * LX * 0.00002;
-            //XMMATRIX rightTranslation = XMMatrixIdentity();
+            XMMATRIX forwardTranslation = XMMatrixTranslationFromVector(forward) * LY * 0.00001;
+            XMMATRIX rightTranslation = XMMatrixTranslationFromVector(right) * LX * 0.00001;
 
             XMMATRIX finalTranslation = forwardTranslation + rightTranslation;
 
@@ -120,6 +122,8 @@ void InputUpdate(float a_fDeltaTime)
     }
 
     //printf("Forward : %f %f %f %f\n", forward.m128_f32[0], forward.m128_f32[1], forward.m128_f32[2], forward.m128_f32[3]);
+    //printf("Right : %f %f %f %f\n", right.m128_f32[0], right.m128_f32[1], right.m128_f32[2], right.m128_f32[3]);
+    //printf("Position : X=%f Y=%f Z=%f\n", g_Camera.transform.position.x, g_Camera.transform.position.y, g_Camera.transform.position.z);
 }
 
 DirectX::XMMATRIX GetViewProjFromCamera(GameCamera a_oCamera, GameScreenResolution a_oResolution)
@@ -139,46 +143,13 @@ DirectX::XMMATRIX GetViewProjFromCamera(GameCamera a_oCamera, GameScreenResoluti
     );
 
     //XMMATRIX View = translation * rotation;
-    XMMATRIX View = translation * a_oCamera.transform.rotation.rotationMatrix;
-
-
-    XMVECTOR lookAt; // Forward-oriented vector
-    lookAt.m128_f32[0] = 0;
-    lookAt.m128_f32[1] = 0;
-    lookAt.m128_f32[2] = 1;
-    XMVECTOR up; // Up-oriented vector for camera
-    up.m128_f32[0] = 0;
-    up.m128_f32[1] = 1;
-    up.m128_f32[2] = 0;
-
-    up = XMVector3TransformCoord(up, rotation);
-    XMVECTOR EyePos;
-    EyePos.m128_f32[0] = a_oCamera.transform.position.x;
-    EyePos.m128_f32[1] = a_oCamera.transform.position.y;
-    EyePos.m128_f32[2] = a_oCamera.transform.position.z;
-    EyePos.m128_f32[3] = 1.0f;
-
-    lookAt = XMVector3TransformCoord(lookAt, rotation) + EyePos;
-
-
-    //View = translation * XMMatrixLookAtLH(EyePos, lookAt, up);
-
-    /*
-    XMMATRIX Projection = XMMatrixPerspectiveLH(
-        1280.0f / 1280.0f,
-        //1280.0f,
-        720.0f / 1280.0f,
-        //720.0f,
-        0.1f,
-        0.1f + 50.0f
-    );
-    */
+    XMMATRIX View = translation * XMMatrixTranspose(a_oCamera.transform.rotation.rotationMatrix);
 
     XMMATRIX Projection = XMMatrixPerspectiveFovLH(
         3.14f / 2.0f, // 90°
         (float)a_oResolution.width / (float)a_oResolution.height,
-        0.1f,
-        0.1f + 5000.0f
+        0.5f,
+        0.5f + 5000.0f
     );
 
     XMMATRIX result = View * Projection;
@@ -558,7 +529,6 @@ void RenderEnd()
 }
 
 Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> g_SRVDescriptorHeap;
-D3DVertexBuffer g_testBuffer;
 
 int main()
 {
@@ -566,9 +536,6 @@ int main()
     g_Camera.transform.position.y = 0;
     g_Camera.transform.position.z = -10;
 
-    g_Camera.transform.rotation.x = 0;
-    g_Camera.transform.rotation.y = 0;
-    g_Camera.transform.rotation.z = 0;
     g_Camera.transform.rotation.rotationMatrix = DirectX::XMMatrixIdentity();
 
     g_ScreenResolution.width = 1280;

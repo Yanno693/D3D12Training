@@ -15,7 +15,7 @@ PixelOutput main(VertexOutput v)
    
    PixelOutput p;
 
-   if(v.position.x > 0.5)
+   if(v.position.x > 1280/2)
    {
 
    p.color = float4(1, 0, 1, 1);

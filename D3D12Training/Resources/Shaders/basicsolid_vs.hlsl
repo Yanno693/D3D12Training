@@ -16,6 +16,7 @@ VertexOutput main(VertexInput input)
     struct VertexOutput v;
     //v.position = float4(input.position.xy, 0, 1);
     v.position = mul(ViewProjMatrix, float4(input.position, 1));
+    //v.position = mul(float4(input.position, 1), ViewProjMatrix);
     //v.position /= v.position.w;
     return v;
 }
