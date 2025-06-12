@@ -29,8 +29,6 @@ void InputUpdate(float a_fDeltaTime)
 {
     using namespace DirectX;
 
-    //XMVECTOR forware = XMVector3Transform(XMVECTOR(0, 0, 1), g_Camera.transform.rotation.rotationMatrix);
-
     a_fDeltaTime *= 5;
     
     if (GetKeyState(VK_UP) & 0x8000)
@@ -142,7 +140,6 @@ DirectX::XMMATRIX GetViewProjFromCamera(GameCamera a_oCamera, GameScreenResoluti
         -a_oCamera.transform.rotation.z
     );
 
-    //XMMATRIX View = translation * rotation;
     XMMATRIX View = translation * XMMatrixTranspose(a_oCamera.transform.rotation.rotationMatrix);
 
     XMMATRIX Projection = XMMatrixPerspectiveFovLH(
@@ -164,8 +161,8 @@ DirectX::XMMATRIX GetInvProjFromCamera(GameCamera a_oCamera, GameScreenResolutio
     XMMATRIX Projection = XMMatrixPerspectiveFovLH(
         3.14f / 2.0f, // 90°
         (float)a_oResolution.width / (float)a_oResolution.height,
-        0.1f,
-        0.1f + 5000.0f
+        0.5f,
+        0.5f + 5000.0f
     );
 
     XMMATRIX InvProjection = XMMatrixInverse(nullptr, Projection);
@@ -189,29 +186,7 @@ DirectX::XMMATRIX GetInvViewFromCamera(GameCamera a_oCamera)
         -a_oCamera.transform.rotation.z
     );
 
-    XMMATRIX View = translation * rotation;
-
-
-    XMVECTOR lookAt; // Forward-oriented vector
-    lookAt.m128_f32[0] = 0;
-    lookAt.m128_f32[1] = 0;
-    lookAt.m128_f32[2] = 1;
-    XMVECTOR up; // Up-oriented vector for camera
-    up.m128_f32[0] = 0;
-    up.m128_f32[1] = 1;
-    up.m128_f32[2] = 0;
-
-    up = XMVector3TransformCoord(up, rotation);
-    XMVECTOR EyePos;
-    EyePos.m128_f32[0] = a_oCamera.transform.position.x;
-    EyePos.m128_f32[1] = a_oCamera.transform.position.y;
-    EyePos.m128_f32[2] = a_oCamera.transform.position.z;
-    EyePos.m128_f32[3] = 1.0f;
-
-    lookAt = XMVector3TransformCoord(lookAt, rotation) + EyePos;
-
-
-    //View = translation * XMMatrixLookAtLH(EyePos, lookAt, up);
+    XMMATRIX View = translation * XMMatrixTranspose(a_oCamera.transform.rotation.rotationMatrix);
 
     XMMATRIX InvView = XMMatrixInverse(nullptr, View);
 
@@ -482,7 +457,7 @@ void RenderLoop()
     // Draw Models;
     for (UINT i = 0; i < g_MeshList.size(); i++)
     {
-        g_MeshList[i].Draw(g_defaultCommandList.Get());
+        //g_MeshList[i].Draw(g_defaultCommandList.Get());
         //g_MeshList[i].DrawRT(g_defaultCommandList.Get());
 
     }
@@ -560,7 +535,8 @@ int main()
     g_SceneData.oViewProjMatrix = DirectX::XMMatrixIdentity();
 
     D3DMesh oMesh;
-    oMesh.Initialize("monkey", D3DDevice::s_device.Get());
+    //oMesh.Initialize("monkey", D3DDevice::s_device.Get());
+    oMesh.Initialize("monkey", D3DDevice::s_device.Get(), true);
     //oMesh.InitializeDebug(D3DDevice::s_device.Get());
     //oMesh.InitializeDebug(D3DDevice::s_device.Get(), true);
 

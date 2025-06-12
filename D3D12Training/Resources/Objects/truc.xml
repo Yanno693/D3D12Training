@@ -1,6 +1,7 @@
 <object>
     <model>truc</model>
     <shader>basicsolid</shader>
+    <rtshader>basicsolidrt</rtshader>
     <transform>
         <position>
             <x>0</x>

@@ -7,6 +7,9 @@ RWTexture2D<float4> uav : register(u0);
 void mainRayGen()
 {
     uint2 idx = DispatchRaysIndex().xy;
+    uint3 dim = DispatchRaysDimensions();
+
+    uint2 out_idx = int2(idx.x, dim.y - 1 - idx.y);
 
     float4 NDCNearPosition = float4((float2(idx) / screenSize) * 2.0f - 1.0f, 0, 1);
     float4 NDCFarPosition = float4((float2(idx) / screenSize) * 2.0f - 1.0f, 1, 1);
@@ -31,5 +34,7 @@ void mainRayGen()
     TraceRay(scene, RAY_FLAG_NONE, 0xFF, 0, 0, 0, ray, payLoad);
 
     //uav[idx] = float4(0, 0.5, 0.5, 1);
-    uav[idx] = payLoad.color;
+
+
+    uav[out_idx] = payLoad.color;
 }

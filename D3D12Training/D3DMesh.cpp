@@ -1,4 +1,7 @@
 #include "D3DMesh.h"
+
+#include "D3DDevice.h"
+
 #include <map>
 #include <fstream>
 #include "json.hpp"
@@ -29,9 +32,14 @@ void D3DMesh::ParseObject(std::string a_sPath)
 
 	XMLElement* pXMLShader = pXMLRoot->FirstChildElement("shader");
 	assert(pXMLShader != nullptr);
-	std::stringstream ssShaderPath;
 	m_pShader = g_D3DShaderManager.RequestShader(pXMLShader->GetText());
 
+	if (D3DDevice::isRayTracingEnabled())
+	{
+		XMLElement* pXMLRTShader = pXMLRoot->FirstChildElement("rtshader");
+		assert(pXMLRTShader != nullptr);
+		m_pRTShader = g_D3DShaderManager.RequestRTShader(pXMLRTShader->GetText());
+	}
 
 	XMLElement* pXMLTransform = pXMLRoot->FirstChildElement("transform");
 	assert(pXMLTransform != nullptr);
@@ -368,9 +376,47 @@ void D3DMesh::CreateGPUBuffers()
 	m_oIndexBuffer.WriteData(m_oMeshIndicesData.ptr, m_oMeshIndicesData.size);
 
 	free(oVertexData);
-	free(m_oMeshPositionData.ptr);
-	free(m_oMeshUVData.ptr);
-	free(m_oMeshIndicesData.ptr);
+}
+
+void D3DMesh::CreateRTGPUBuffers(ID3D12Device5* a_pDevice)
+{
+	if (!D3DDevice::isRayTracingEnabled())
+		return;
+
+	g_D3DBufferManager.InitializeGenericBuffer(&m_oRTVertexBuffer.m_oBuffer, m_oMeshPositionData.size);
+	m_oRTVertexBuffer.m_oData.SizeInBytes = m_oMeshPositionData.size;
+	m_oRTVertexBuffer.m_oData.StrideInBytes = m_oMeshPositionData.stride;
+	m_oRTVertexBuffer.WriteData(m_oMeshPositionData.ptr, m_oMeshPositionData.size);
+	g_D3DBufferManager.InitializeGenericBuffer(&m_oRTIndexBuffer.m_oBuffer, m_oMeshIndicesData.size);
+	m_oRTIndexBuffer.m_oData.SizeInBytes = m_oMeshIndicesData.size;
+	m_oRTIndexBuffer.m_oData.Format = (m_oMeshIndicesData.stride == sizeof(USHORT) ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT);
+	m_oRTIndexBuffer.WriteData(m_oMeshIndicesData.ptr, m_oMeshIndicesData.size);
+
+	// Create BVH
+	m_oBVHGeometry.Type = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
+	m_oBVHGeometry.Flags = D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE;
+	m_oBVHGeometry.Triangles.Transform3x4 = 0;
+	m_oBVHGeometry.Triangles.IndexFormat = m_oRTIndexBuffer.m_oData.Format;
+	m_oBVHGeometry.Triangles.IndexCount = m_oMeshIndicesData.count;
+	m_oBVHGeometry.Triangles.IndexBuffer = m_oRTIndexBuffer.m_oBuffer.m_pResource.Get()->GetGPUVirtualAddress();
+	m_oBVHGeometry.Triangles.VertexFormat = DXGI_FORMAT_R32G32B32_FLOAT;
+	m_oBVHGeometry.Triangles.VertexCount = m_oMeshPositionData.count;
+	m_oBVHGeometry.Triangles.VertexBuffer.StartAddress = m_oRTVertexBuffer.m_oBuffer.m_pResource.Get()->GetGPUVirtualAddress();
+	m_oBVHGeometry.Triangles.VertexBuffer.StrideInBytes = m_oRTVertexBuffer.m_oData.StrideInBytes;
+
+	m_oBVHInput.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL;
+	m_oBVHInput.Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
+	m_oBVHInput.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
+	m_oBVHInput.NumDescs = 1;
+	m_oBVHInput.pGeometryDescs = &m_oBVHGeometry;
+
+	D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO oBVHPreBuildInfo;
+	a_pDevice->GetRaytracingAccelerationStructurePrebuildInfo(&m_oBVHInput, &oBVHPreBuildInfo);
+
+	g_D3DBufferManager.InitializeGenericBuffer(&m_oBVH, oBVHPreBuildInfo.ResultDataMaxSizeInBytes, true, D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE);
+	m_oBVH.SetDebugName(L"BVH Buffer");
+	g_D3DBufferManager.InitializeGenericBuffer(&m_oBVHScratch, oBVHPreBuildInfo.ScratchDataSizeInBytes, true);
+	m_oBVHScratch.SetDebugName(L"BVH Scratch Buffer");
 }
 
 
@@ -699,7 +745,7 @@ void D3DMesh::InitializeDebug(ID3D12Device5* a_pDevice, bool a_bUsesRayTracing)
 	}
 }
 
-void D3DMesh::Initialize(std::string a_sPath, ID3D12Device* a_pDevice)
+void D3DMesh::Initialize(std::string a_sPath, ID3D12Device5* a_pDevice, bool a_bUsesRayTracing)
 {
 	// Todo : Load a file and parse it
 
@@ -719,31 +765,7 @@ void D3DMesh::Initialize(std::string a_sPath, ID3D12Device* a_pDevice)
 	//ParseModel(sModelPath.str());
 
 	CreateGPUBuffers();
-
-	// 1. Load shader
-	//m_pShader = g_D3DShaderManager.RequestShader("test");
-
-	// 2. Create Vertex Buffer + Pass Data
-	/*
-	_2DVertex vVertex[3] = {
-		{0.5f, 0},
-		{0, 1},
-		{1, 0}
-	};
-
-	_3DVertex vVertex[3] = {
-		{0, 0, 5.0f},
-		{0, 1, 5.0f},
-		{1, 0, 5.0f}
-	};
-	*/
-
-	//UINT32 vIndex[3] = { 0, 1, 2 };
-
-	//g_D3DBufferManager.InitializeVertexBuffer(&m_oVertexBuffer, sizeof(vVertex), sizeof(_3DVertex));
-	//m_oVertexBuffer.WriteData((void*)vVertex, sizeof(vVertex));
-	//g_D3DBufferManager.InitializeIndexBuffer(&m_oIndexBuffer, sizeof(vIndex));
-	//m_oIndexBuffer.WriteData((void*)vIndex, sizeof(vIndex));
+	CreateRTGPUBuffers(a_pDevice);
 
 	// Set debug name
 	std::wstring ws(a_sPath.begin(), a_sPath.end());
@@ -752,7 +774,6 @@ void D3DMesh::Initialize(std::string a_sPath, ID3D12Device* a_pDevice)
 	m_oVertexBuffer.SetDebugName(ss.str().c_str());
 
 	// Create PSO
-
 	D3D12_INPUT_LAYOUT_DESC oInputLayoutDesc = {};
 	oInputLayoutDesc.NumElements = (UINT)m_pShader->m_vInputElements.size();
 	oInputLayoutDesc.pInputElementDescs = m_pShader->m_vInputElements.data();
@@ -764,7 +785,6 @@ void D3DMesh::Initialize(std::string a_sPath, ID3D12Device* a_pDevice)
 	D3D12_SHADER_BYTECODE oDxPs;
 	oDxPs.BytecodeLength = m_pShader->m_pPS->m_uiByteCodeSize;
 	oDxPs.pShaderBytecode = m_pShader->m_pPS->m_pByteCode;
-
 
 	D3D12_ROOT_PARAMETER oVBSceneRootParameter = {};
 	oVBSceneRootParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
@@ -830,6 +850,170 @@ void D3DMesh::Initialize(std::string a_sPath, ID3D12Device* a_pDevice)
 		sErrorSS << "Error : Pipeline state object compilation for object " << a_sPath << "\n";
 		OutputDebugStringA(sErrorSS.str().c_str());
 		assert(0);
+	}
+
+	// Create RT PSO
+	if (D3DDevice::isRayTracingEnabled())
+	{
+		// It seems UAV have to be set in Descriptor Tables always ? 
+		D3D12_DESCRIPTOR_RANGE oUAVRange = {};
+		oUAVRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
+		oUAVRange.NumDescriptors = 1;
+
+		D3D12_ROOT_PARAMETER oUAVRootParameter = {};
+		oUAVRootParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+		oUAVRootParameter.DescriptorTable.NumDescriptorRanges = 1;
+		oUAVRootParameter.DescriptorTable.pDescriptorRanges = &oUAVRange;
+
+		D3D12_ROOT_PARAMETER oBVHRootParameter = {};
+		oBVHRootParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
+		oBVHRootParameter.Descriptor.RegisterSpace = 0;
+		oBVHRootParameter.Descriptor.ShaderRegister = 0;
+
+		D3D12_ROOT_PARAMETER oSceneParameter = {};
+		oSceneParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+		oSceneParameter.Descriptor.RegisterSpace = 0;
+		oSceneParameter.Descriptor.ShaderRegister = 0;
+
+		D3D12_ROOT_PARAMETER pRayTracingRootParameters[] = { oUAVRootParameter, oBVHRootParameter, oSceneParameter };
+
+		Microsoft::WRL::ComPtr<ID3DBlob> rsBlob = nullptr;
+		Microsoft::WRL::ComPtr<ID3DBlob> errorBlob = nullptr;
+
+		D3D12_ROOT_SIGNATURE_DESC rsDesc = {};
+		rsDesc.NumParameters = _countof(pRayTracingRootParameters);
+		rsDesc.NumStaticSamplers = 0;
+		rsDesc.pStaticSamplers = NULL;
+		rsDesc.pParameters = pRayTracingRootParameters;
+		rsDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+
+		D3D12SerializeRootSignature(&rsDesc, D3D_ROOT_SIGNATURE_VERSION_1, &rsBlob, &errorBlob);
+		if (errorBlob != nullptr)
+		{
+			void* d = errorBlob->GetBufferPointer();
+			int a = 1;
+			assert(0);
+		}
+
+		if (!SUCCEEDED(a_pDevice->CreateRootSignature(0, rsBlob->GetBufferPointer(), rsBlob->GetBufferSize(), IID_PPV_ARGS(&m_pRayTracingRootSignature))))
+		{
+			OutputDebugStringA("Error : Create Root signature\n");
+			assert(0);
+		}
+
+		D3D12_SHADER_BYTECODE oRGByteCode;
+		D3D12_SHADER_BYTECODE oHitByteCode;
+		D3D12_SHADER_BYTECODE oMissByteCode;
+		oRGByteCode.pShaderBytecode = m_pRTShader->m_pRGS->m_pByteCode;
+		oRGByteCode.BytecodeLength = m_pRTShader->m_pRGS->m_uiByteCodeSize;
+		oHitByteCode.pShaderBytecode = m_pRTShader->m_pHS->m_pByteCode;
+		oHitByteCode.BytecodeLength = m_pRTShader->m_pHS->m_uiByteCodeSize;
+		oMissByteCode.pShaderBytecode = m_pRTShader->m_pMS->m_pByteCode;
+		oMissByteCode.BytecodeLength = m_pRTShader->m_pMS->m_uiByteCodeSize;
+
+		D3D12_DXIL_LIBRARY_DESC oRGDXILLib = {};
+		D3D12_DXIL_LIBRARY_DESC oHitDXILLib = {};
+		D3D12_DXIL_LIBRARY_DESC oMissDXILLib = {};
+		oRGDXILLib.DXILLibrary = oRGByteCode;
+		oHitDXILLib.DXILLibrary = oHitByteCode;
+		oMissDXILLib.DXILLibrary = oMissByteCode;
+
+		// This structs is basically here to say "when we touch something , we do some of these"
+		D3D12_HIT_GROUP_DESC oHitGroup = {};
+		oHitGroup.Type = D3D12_HIT_GROUP_TYPE_TRIANGLES;
+		oHitGroup.HitGroupExport = L"HitGroup";
+		oHitGroup.ClosestHitShaderImport = L"mainHit";
+		D3D12_STATE_SUBOBJECT oHitGroupSubobject = {};
+		oHitGroupSubobject.Type = D3D12_STATE_SUBOBJECT_TYPE_HIT_GROUP;
+		oHitGroupSubobject.pDesc = &oHitGroup;
+
+		// So, these are my shaders
+		D3D12_STATE_SUBOBJECT oRGLibSubobject = {};
+		oRGLibSubobject.Type = D3D12_STATE_SUBOBJECT_TYPE_DXIL_LIBRARY;
+		oRGLibSubobject.pDesc = &oRGDXILLib;
+		D3D12_STATE_SUBOBJECT oHitLibSubobject = {};
+		oHitLibSubobject.Type = D3D12_STATE_SUBOBJECT_TYPE_DXIL_LIBRARY;
+		oHitLibSubobject.pDesc = &oHitDXILLib;
+		D3D12_STATE_SUBOBJECT oMissLibSubobject = {};
+		oMissLibSubobject.Type = D3D12_STATE_SUBOBJECT_TYPE_DXIL_LIBRARY;
+		oMissLibSubobject.pDesc = &oMissDXILLib;
+
+		// This is the payload size, struct shader through shaders
+		D3D12_RAYTRACING_SHADER_CONFIG oShaderConfig;
+		oShaderConfig.MaxPayloadSizeInBytes = 4 * sizeof(float); // float4 for color, I guess ?
+		oShaderConfig.MaxAttributeSizeInBytes = 2 * sizeof(float);
+		D3D12_STATE_SUBOBJECT oShaderConfigSubobject = {};
+		oShaderConfigSubobject.Type = D3D12_STATE_SUBOBJECT_TYPE_RAYTRACING_SHADER_CONFIG;
+		oShaderConfigSubobject.pDesc = &oShaderConfig;
+
+		// This is the root signature, it's shared between the ray tracing shaders (same BVH, same UAV texture)
+		D3D12_GLOBAL_ROOT_SIGNATURE oGlobalSig = {};
+		oGlobalSig.pGlobalRootSignature = m_pRayTracingRootSignature.Get();
+		D3D12_STATE_SUBOBJECT oGlobalRootSignatureSubobject = {};
+		oGlobalRootSignatureSubobject.Type = D3D12_STATE_SUBOBJECT_TYPE_GLOBAL_ROOT_SIGNATURE;
+		oGlobalRootSignatureSubobject.pDesc = &oGlobalSig;
+
+		// This holds the number of bounce it seems
+		D3D12_RAYTRACING_PIPELINE_CONFIG oRTPipeline = {};
+		oRTPipeline.MaxTraceRecursionDepth = 1;
+		D3D12_STATE_SUBOBJECT oRTPipelineSubobject = {};
+		oRTPipelineSubobject.Type = D3D12_STATE_SUBOBJECT_TYPE_RAYTRACING_PIPELINE_CONFIG;
+		oRTPipelineSubobject.pDesc = &oRTPipeline;
+
+		D3D12_STATE_SUBOBJECT aSubobjects[] = {
+			oRGLibSubobject,
+			oMissLibSubobject,
+			oHitLibSubobject,
+			oHitGroupSubobject,
+			oShaderConfigSubobject,
+			oGlobalRootSignatureSubobject,
+			oRTPipelineSubobject
+		};
+
+		D3D12_STATE_OBJECT_DESC oRayTracingPS0Desc = {};
+		oRayTracingPS0Desc.Type = D3D12_STATE_OBJECT_TYPE_RAYTRACING_PIPELINE;
+		oRayTracingPS0Desc.pSubobjects = aSubobjects;
+		oRayTracingPS0Desc.NumSubobjects = _countof(aSubobjects);
+
+		if (!SUCCEEDED(a_pDevice->CreateStateObject(&oRayTracingPS0Desc, IID_PPV_ARGS(&m_pRayTracingPso))))
+		{
+			OutputDebugStringA("Error : Create Ray Tracing Root signature\n");
+			assert(0);
+		}
+
+		//Create Shader table
+		m_uiShaderIDCount = 3;
+		g_D3DBufferManager.InitializeGenericBuffer(&m_oShaderIDBuffer, m_uiShaderIDCount * D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
+
+		ID3D12StateObjectProperties* oRTPSOProperties;
+		if (!SUCCEEDED(m_pRayTracingPso.Get()->QueryInterface(&oRTPSOProperties)))
+		{
+			OutputDebugStringA("Error : Query Ray Tracing PSO\n");
+			assert(0);
+		}
+
+		void* apShaderID[3];
+		char* apShaderIDData = (char*)malloc(D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES * 3);
+		ZeroMemory(apShaderID, sizeof(apShaderID));
+		ZeroMemory(apShaderIDData, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES * 3);
+
+		apShaderID[0] = oRTPSOProperties->GetShaderIdentifier(L"mainRayGen");
+		apShaderID[1] = oRTPSOProperties->GetShaderIdentifier(L"mainMiss");
+		apShaderID[2] = oRTPSOProperties->GetShaderIdentifier(L"HitGroup");
+		assert(apShaderID[0] != nullptr);
+		assert(apShaderID[1] != nullptr);
+		assert(apShaderID[2] != nullptr);
+		assert(apShaderIDData != nullptr);
+
+		for (int i = 0; i < 3; i++)
+		{
+			memcpy(apShaderIDData + i * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES, apShaderID[i], sizeof(void*));
+		}
+
+		m_oShaderIDBuffer.WriteData(apShaderIDData, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES * 3);
+
+		oRTPSOProperties->Release();
+		free(apShaderIDData);
 	}
 }
 

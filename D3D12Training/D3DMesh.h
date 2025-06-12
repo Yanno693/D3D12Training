@@ -32,6 +32,7 @@ private:
 	void ParseModelGLTF(std::string a_sPath, std::string const a_sPathBin); // Load the geometry of the object from a GLTF file (ParseObject has to be called first)
 
 	void CreateGPUBuffers();
+	void CreateRTGPUBuffers(ID3D12Device5* a_pDevice);
 
 	ExtraPtr m_oMeshPositionData = {};
 	ExtraPtr m_oMeshUVData = {};
@@ -70,7 +71,7 @@ public:
 	D3DConstantBuffer m_oInstanceBuffer; // Constant Buffer for the mesh, contains the transform of the object (on the Model matrix)
 
 
-	void Initialize(std::string const a_sPath, ID3D12Device* a_pDevice);
+	void Initialize(std::string const a_sPath, ID3D12Device5* a_pDevice, bool a_bUsesRayTracing = false);
 	void InitializeDebug(ID3D12Device5* a_pDevice, bool a_bUsesRayTracing = false);
 	void Draw(ID3D12GraphicsCommandList* a_pCommandList);
 	void DrawRT(ID3D12GraphicsCommandList4* a_pCommandList);
