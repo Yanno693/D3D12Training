@@ -60,13 +60,13 @@ void InputUpdate(float a_fDeltaTime)
     {
         g_Camera.transform.rotation.y += a_fDeltaTime;
         //g_Camera.transform.rotation.rotationMatrix *= DirectX::XMMatrixRotationY(-a_fDeltaTime * 0.2);
-        g_Camera.transform.rotation.rotationMatrix *= DirectX::XMMatrixRotationAxis(up, -a_fDeltaTime * 0.2);
+        g_Camera.transform.rotation.rotationMatrix *= DirectX::XMMatrixRotationAxis(up, -a_fDeltaTime * 0.2f);
     }
     if (GetKeyState('Q') & 0x8000)
     {
         g_Camera.transform.rotation.y -= a_fDeltaTime;
         //g_Camera.transform.rotation.rotationMatrix *= DirectX::XMMatrixRotationY(a_fDeltaTime * 0.2);
-        g_Camera.transform.rotation.rotationMatrix *= DirectX::XMMatrixRotationAxis(up, a_fDeltaTime * 0.2);
+        g_Camera.transform.rotation.rotationMatrix *= DirectX::XMMatrixRotationAxis(up, a_fDeltaTime * 0.2f);
     }
 
     XMVECTOR right(g_Camera.transform.rotation.rotationMatrix.r[0]);
@@ -76,13 +76,13 @@ void InputUpdate(float a_fDeltaTime)
     {
         g_Camera.transform.rotation.x -= a_fDeltaTime;
         //g_Camera.transform.rotation.rotationMatrix *= DirectX::XMMatrixRotationX(a_fDeltaTime * 0.2);
-        g_Camera.transform.rotation.rotationMatrix *= DirectX::XMMatrixRotationAxis(right, a_fDeltaTime * 0.2);
+        g_Camera.transform.rotation.rotationMatrix *= DirectX::XMMatrixRotationAxis(right, a_fDeltaTime * 0.2f);
     }
     if (GetKeyState('S') & 0x8000)
     {
         g_Camera.transform.rotation.x += a_fDeltaTime;
         //g_Camera.transform.rotation.rotationMatrix *= DirectX::XMMatrixRotationX(-a_fDeltaTime * 0.2);
-        g_Camera.transform.rotation.rotationMatrix *= DirectX::XMMatrixRotationAxis(right, -a_fDeltaTime * 0.2);
+        g_Camera.transform.rotation.rotationMatrix *= DirectX::XMMatrixRotationAxis(right, -a_fDeltaTime * 0.2f);
     }
 
     DWORD dwResult;
@@ -100,15 +100,15 @@ void InputUpdate(float a_fDeltaTime)
         float deadzone = sqrt(RX * RX + RY * RY);
         if (deadzone > XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE)
         {
-            g_Camera.transform.rotation.rotationMatrix *= DirectX::XMMatrixRotationAxis(up, RX * a_fDeltaTime * 0.00002);
-            g_Camera.transform.rotation.rotationMatrix *= DirectX::XMMatrixRotationAxis(right, -RY * a_fDeltaTime * 0.00002);
+            g_Camera.transform.rotation.rotationMatrix *= DirectX::XMMatrixRotationAxis(up, RX * a_fDeltaTime * 0.00002f);
+            g_Camera.transform.rotation.rotationMatrix *= DirectX::XMMatrixRotationAxis(right, -RY * a_fDeltaTime * 0.00002f);
         }
 
         deadzone = sqrt(LX * LX + LY * LY);
         if (deadzone > XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE)
         {
-            XMMATRIX forwardTranslation = XMMatrixTranslationFromVector(forward) * LY * 0.00001;
-            XMMATRIX rightTranslation = XMMatrixTranslationFromVector(right) * LX * 0.00001;
+            XMMATRIX forwardTranslation = XMMatrixTranslationFromVector(forward) * LY * 0.00001f;
+            XMMATRIX rightTranslation = XMMatrixTranslationFromVector(right) * LX * 0.00001f;
 
             XMMATRIX finalTranslation = forwardTranslation + rightTranslation;
 

@@ -235,6 +235,24 @@ void D3DShaderManager::LoadRTShader(std::string const a_sPath)
 	m_oRTShaderSet.insert(std::make_pair(a_sPath, pRTShaderGroup));
 }
 
+void D3DShaderManager::LoadRTShader(std::string const a_sPath, D3D_RT_SHADER_TYPE const a_eShaderType)
+{
+	D3DRTShader* pRTShader;
+
+	switch (a_eShaderType) // I'm sure there's a way to factorize this but i'm lazy, this will be enough for now
+	{
+		case RAYGEN:
+			pRTShader = new D3DRayGenerationShader();
+			break;
+		case HIT :
+			pRTShader = new D3DHitShader();
+			break;
+		case MISS:
+			pRTShader = new D3DMissShader();
+			break;
+	};
+}
+
 D3DShaderPair* D3DShaderManager::RequestShader(std::string const a_sPath)
 {
 	if (m_oShaderSet.find(a_sPath) == m_oShaderSet.end())
@@ -249,6 +267,39 @@ D3DRTShaderGroup* D3DShaderManager::RequestRTShader(std::string const a_sPath)
 		LoadRTShader(a_sPath);
 
 	return m_oRTShaderSet[a_sPath];
+}
+
+D3DRTShader* D3DShaderManager::RequestRTShaderV2(std::string const a_sPath, D3D_RT_SHADER_TYPE const a_eShaderType)
+{
+	
+	
+	switch (a_eShaderType) // I'm sure there's a way to factorize this but i'm lazy, this will be enough for now
+	{
+		case(D3D_RT_SHADER_TYPE::RAYGEN):
+		{
+			if (m_oRayGenShaderSet.find(a_sPath) == m_oRayGenShaderSet.end())
+				LoadRTShader(a_sPath, a_eShaderType);
+
+			return m_oRayGenShaderSet[a_sPath];
+		}
+		break;
+		case(D3D_RT_SHADER_TYPE::HIT):
+		{
+			if (m_oHitShaderSet.find(a_sPath) == m_oHitShaderSet.end())
+				LoadRTShader(a_sPath, a_eShaderType);
+
+			return m_oHitShaderSet[a_sPath];
+		}
+		break;
+		case(D3D_RT_SHADER_TYPE::MISS):
+		{
+			if (m_oMissShaderSet.find(a_sPath) == m_oMissShaderSet.end())
+				LoadRTShader(a_sPath, a_eShaderType);
+
+			return m_oMissShaderSet[a_sPath];
+		}
+		break;
+	};
 }
 
 D3DShaderManager g_D3DShaderManager;

@@ -44,14 +44,21 @@ class D3DShaderManager
 private:
 	std::unordered_map<std::string, D3DShaderPair*> m_oShaderSet; // Table of all loaded shader. If multiple mesh need the same shader, it's in here
 	std::unordered_map<std::string, D3DRTShaderGroup*> m_oRTShaderSet; // Table of all loaded shader. If multiple mesh need the same shader, it's in here
+	
+	std::unordered_map<std::string, D3DRTShader*> m_oRayGenShaderSet; // Table of all loaded ray generation shader.
+	std::unordered_map<std::string, D3DRTShader*> m_oMissShaderSet; // Table of all loaded miss shader.
+	std::unordered_map<std::string, D3DRTShader*> m_oHitShaderSet; // Table of all loaded hit shader.
+	
 	void LoadShader(std::string const a_sPath); // Load a shader and keep it
 	void LoadRTShader(std::string const a_sPath); // Load a ray tracing shader and keep it
+	void LoadRTShader(std::string const a_sPath, D3D_RT_SHADER_TYPE const a_eShaderType); // Load a ray tracing shader and keep it
 
 	Microsoft::WRL::ComPtr<IDxcUtils> m_pUtils = nullptr; // DXC Utilitary for shader reflection
 	
 public:
 	D3DShaderPair* RequestShader(std::string const a_sPath); // Return a shader
 	D3DRTShaderGroup* RequestRTShader(std::string const a_sPath); // Return a ray tracing shader
+	D3DRTShader* RequestRTShaderV2(std::string const a_sPath, D3D_RT_SHADER_TYPE const a_eShaderType); // Return a ray tracing shader
 };
 
 extern D3DShaderManager g_D3DShaderManager;
