@@ -19,6 +19,13 @@ public:
 class D3DRayGenerationShader : public D3DRTShader
 {
 	// Only one RayGenerationShader for the whole scene ... normally
+public:
+	static UINT g_ShaderCount;
+
+	D3DRayGenerationShader()
+	{
+		g_ShaderCount++;
+	}
 };
 
 class D3DHitShader : public D3DRTShader
