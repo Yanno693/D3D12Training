@@ -12,6 +12,8 @@ void D3DRayTracingScene::Initialize(ID3D12Device5* a_pDevice)
 		m_bInitialized = true;
 
 		g_D3DBufferManager.RequestDescriptor(m_uiBVH_CPUHandle, m_uiBVH_GPUHandle);
+
+		m_oSceneRGShader = static_cast<D3DRayGenerationShader*>(g_D3DShaderManager.RequestRTShaderV2("default", RAYGEN));
 	}
 }
 
@@ -98,7 +100,7 @@ void D3DRayTracingScene::CreateBVH(ID3D12GraphicsCommandList4* a_pCommandList)
 		pInstancesData[i].InstanceMask = 1;
 		pInstancesData[i].AccelerationStructure = m_apCurrentSceneMesh[i]->m_oBVH.m_pResource.Get()->GetGPUVirtualAddress();
 
-		DirectX::XMMATRIX oTransform = DirectX::XMMatrixIdentity(); // TODO : Do
+		DirectX::XMMATRIX oTransform = DirectX::XMMatrixIdentity(); // TODO : Pass transform from the object
 		
 		//oTransform *= DirectX::XMMatrixTranslation(0, 1, 0);
 		DirectX::XMStoreFloat3x4((DirectX::XMFLOAT3X4*)&pInstancesData[i].Transform, oTransform);

@@ -10,10 +10,10 @@ class D3DRayTracingScene
 {
 
 private:
-	std::vector<D3DMesh*> m_apCurrentSceneMesh;
+	std::vector<D3DMesh*> m_apCurrentSceneMesh; // Binded mesh for render
 	ID3D12Device5* m_pDevice = nullptr;
 	bool m_bInitialized;
-	D3DTexture* m_pRenderTarget = nullptr;
+	D3DTexture* m_pRenderTarget = nullptr; // To refactor i guess
  
 	D3D12_CPU_DESCRIPTOR_HANDLE m_uiBVH_CPUHandle = {};
 	D3D12_GPU_DESCRIPTOR_HANDLE m_uiBVH_GPUHandle = {};

@@ -227,7 +227,7 @@ void D3DShaderManager::LoadRTShader(std::string const a_sPath)
 	assert(bHSReadFileResult != 0);
 	assert(bMSReadFileResult != 0);
 
-	// Files concants have been saved to buffers, let' close them
+	// Files content have been saved to buffers, let's close them
 	CloseHandle(pRGSFileHandle);
 	CloseHandle(pHSFileHandle);
 	CloseHandle(pMSFileHandle);
@@ -237,19 +237,60 @@ void D3DShaderManager::LoadRTShader(std::string const a_sPath)
 
 void D3DShaderManager::LoadRTShader(std::string const a_sPath, D3D_RT_SHADER_TYPE const a_eShaderType)
 {
-	D3DRTShader* pRTShader;
+	D3DRTShader* pRTShader = nullptr;
+	std::string sShaderPathSuffix;
 
-	switch (a_eShaderType) // I'm sure there's a way to factorize this but i'm lazy, this will be enough for now
+	switch (a_eShaderType)
 	{
 		case RAYGEN:
 			pRTShader = new D3DRayGenerationShader();
+			sShaderPathSuffix = "_rg.cso";
 			break;
 		case HIT :
 			pRTShader = new D3DHitShader();
+			sShaderPathSuffix = "_ch.cso";
 			break;
 		case MISS:
 			pRTShader = new D3DMissShader();
+			sShaderPathSuffix = "_miss.cso";
 			break;
+	};
+	assert(pRTShader != nullptr);
+
+	std::string sPath = "./Shaders/" + a_sPath + sShaderPathSuffix;
+
+	// Open shader bytecode
+	HANDLE pFileHandle = CreateFileA(
+		sPath.c_str(),
+		GENERIC_READ,
+		0,
+		0,
+		OPEN_EXISTING,
+		FILE_ATTRIBUTE_NORMAL,
+		NULL);
+	assert(pFileHandle != INVALID_HANDLE_VALUE);
+
+	ULONG uiFileSize = GetFileSize(pFileHandle, nullptr);
+
+	pRTShader->m_uiByteCodeSize = uiFileSize;
+	pRTShader->m_pByteCode = new char[uiFileSize];
+
+	BOOL bReadFileResult = ReadFile(pFileHandle, pRTShader->m_pByteCode, uiFileSize, NULL, NULL);
+	assert(bReadFileResult != 0);
+
+	CloseHandle(pFileHandle);
+
+	switch (a_eShaderType)
+	{
+	case RAYGEN:
+		m_oRayGenShaderSet.insert(std::make_pair(a_sPath, pRTShader));
+		break;
+	case HIT:
+		m_oHitShaderSet.insert(std::make_pair(a_sPath, pRTShader));
+		break;
+	case MISS:
+		m_oMissShaderSet.insert(std::make_pair(a_sPath, pRTShader));
+		break;
 	};
 }
 
