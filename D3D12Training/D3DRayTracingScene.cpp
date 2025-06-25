@@ -90,6 +90,8 @@ void D3DRayTracingScene::CreateBVH(ID3D12GraphicsCommandList4* a_pCommandList)
 	g_D3DBufferManager.InitializeGenericBuffer(&m_oInstanceUpdateBuffer, sizeof(D3D12_RAYTRACING_INSTANCE_DESC) * m_apCurrentSceneMesh.size());
 	m_oInstanceUpdateBuffer.SetDebugName(L"RT Scene Instance Buffer Update");
 
+	g_D3DBufferManager.InitializeGenericBuffer(&m_oSceneShaderIDBuffer, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES * g_D3DShaderManager.GetRTShadersCount());
+
 	D3D12_RAYTRACING_INSTANCE_DESC* pInstancesData = (D3D12_RAYTRACING_INSTANCE_DESC*)malloc(sizeof(D3D12_RAYTRACING_INSTANCE_DESC) * m_apCurrentSceneMesh.size());
 	assert(pInstancesData != nullptr);
 
@@ -152,6 +154,7 @@ void D3DRayTracingScene::ReleaseBVH()
 	m_oInstanceUpdateBuffer.m_pResource.ReleaseAndGetAddressOf();
 	m_oBVH.m_pResource.ReleaseAndGetAddressOf();
 	m_oBVHScratch.m_pResource.ReleaseAndGetAddressOf();
+	m_oSceneShaderIDBuffer.m_pResource.ReleaseAndGetAddressOf();
 
 	/*
 	m_oInstanceUpdateBuffer.m_pResource.Reset();

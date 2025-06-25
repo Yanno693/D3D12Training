@@ -13,14 +13,16 @@ private:
 	std::vector<D3DMesh*> m_apCurrentSceneMesh; // Binded mesh for render
 	ID3D12Device5* m_pDevice = nullptr;
 	bool m_bInitialized;
-	D3DTexture* m_pRenderTarget = nullptr; // To refactor i guess
+	D3DTexture* m_pRenderTarget = nullptr; // To refactor i guess, a UAV to draw
  
 	D3D12_CPU_DESCRIPTOR_HANDLE m_uiBVH_CPUHandle = {};
 	D3D12_GPU_DESCRIPTOR_HANDLE m_uiBVH_GPUHandle = {};
 
-	D3DGenericBuffer m_oBVH;
-	D3DGenericBuffer m_oBVHScratch;
-	D3DGenericBuffer m_oInstanceUpdateBuffer;
+	D3DGenericBuffer m_oBVH; // TLAS BVH for the whole scene
+	D3DGenericBuffer m_oBVHScratch; // Scratch memory for generation the scene BVH
+	D3DGenericBuffer m_oInstanceUpdateBuffer; // Instance Buffer, holding data for each mesh to draw
+
+	D3DGenericBuffer m_oSceneShaderIDBuffer;
 
 	D3DRayGenerationShader* m_oSceneRGShader = nullptr;
 

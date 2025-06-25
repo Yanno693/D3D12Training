@@ -343,4 +343,9 @@ D3DRTShader* D3DShaderManager::RequestRTShaderV2(std::string const a_sPath, D3D_
 	};
 }
 
+UINT D3DShaderManager::GetRTShadersCount() const
+{
+	return m_oRayGenShaderSet.size() + m_oMissShaderSet.size() + m_oHitShaderSet.size();
+}
+
 D3DShaderManager g_D3DShaderManager;
