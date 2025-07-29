@@ -19,7 +19,7 @@ private:
 	D3D12_GPU_DESCRIPTOR_HANDLE m_uiBVH_GPUHandle = {};
 
 	D3DGenericBuffer m_oBVH; // TLAS BVH for the whole scene
-	D3DGenericBuffer m_oBVHScratch; // Scratch memory for generation the scene BVH
+	D3DGenericBuffer m_oBVHScratch; // Scratch memory for generating the scene BVH
 	D3DGenericBuffer m_oInstanceUpdateBuffer; // Instance Buffer, holding data for each mesh to draw
 
 	D3DGenericBuffer m_oSceneShaderIDBuffer;

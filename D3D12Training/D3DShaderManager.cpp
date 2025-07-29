@@ -155,8 +155,6 @@ void D3DShaderManager::LoadShader(std::string const a_sPath)
 		pShaderPair->m_vInputElements.push_back(oInputElement);
 	}
 
-	//pReflection->Release();
-
 	m_oShaderSet.insert(std::make_pair(a_sPath, pShaderPair));
 }
 
