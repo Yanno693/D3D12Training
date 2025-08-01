@@ -24,10 +24,14 @@ private:
 
 	D3DGenericBuffer m_oSceneShaderIDBuffer;
 
+	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_pRayTracingRootSignature;
+
 	D3DRayGenerationShader* m_oSceneRGShader = nullptr;
 
 	void CreateBVH(ID3D12GraphicsCommandList4* a_pCommandList);
 	void ReleaseBVH();
+
+	void CreateGlobalRayTracingRootSignature(ID3D12Device5* a_pDevice);
 
 public:
 
@@ -35,7 +39,9 @@ public:
 	void setRenderTarget(D3DTexture* a_pTexture);
 	void SubmitForDraw(D3DMesh* a_pMesh);
 	void DrawScene(ID3D12GraphicsCommandList4* a_pCommandList);
-	void flushSceneMesh();
+	void FlushSceneMesh();
+
+	ID3D12RootSignature* GetGlobalRayTracingRootSignature() const;
 
 };
 

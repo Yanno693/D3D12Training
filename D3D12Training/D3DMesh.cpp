@@ -7,7 +7,8 @@
 #include "json.hpp"
 
 GameScreenResolution g_ScreenResolution;
-std::vector<D3DMesh> g_MeshList;
+
+std::vector<D3DMesh> D3DMesh::g_MeshList;
 
 void D3DMesh::ParseObject(std::string a_sPath)
 {

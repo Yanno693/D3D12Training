@@ -80,7 +80,7 @@ public:
 	GamePosition GetPosition();
 
 	bool m_bIsIndexed = false;
-};
 
-extern std::vector<D3DMesh> g_MeshList;
+	static std::vector<D3DMesh> g_MeshList;
+};
 

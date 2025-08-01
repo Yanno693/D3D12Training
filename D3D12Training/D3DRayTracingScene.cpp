@@ -14,6 +14,8 @@ void D3DRayTracingScene::Initialize(ID3D12Device5* a_pDevice)
 		g_D3DBufferManager.RequestDescriptor(m_uiBVH_CPUHandle, m_uiBVH_GPUHandle);
 
 		m_oSceneRGShader = static_cast<D3DRayGenerationShader*>(g_D3DShaderManager.RequestRTShaderV2("default", RAYGEN));
+	
+		CreateGlobalRayTracingRootSignature(a_pDevice);
 	}
 }
 
@@ -91,7 +93,10 @@ void D3DRayTracingScene::CreateBVH(ID3D12GraphicsCommandList4* a_pCommandList)
 	m_oInstanceUpdateBuffer.SetDebugName(L"RT Scene Instance Buffer Update");
 
 	g_D3DBufferManager.InitializeGenericBuffer(&m_oSceneShaderIDBuffer, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES * g_D3DShaderManager.GetRTShadersCount());
-	m_oSceneShaderIDBuffer.SetDebugName(L"RT Scene Shade ID Buffer");
+	m_oSceneShaderIDBuffer.SetDebugName(L"RT Scene Shade ID Buffer"); // You'll need to create the RT PSO to fill the shader id buffer if the identifiers
+
+	//std::vector<char*> g;
+	//g.emplace_back(D3DShaderManager::)
 
 	D3D12_RAYTRACING_INSTANCE_DESC* pInstancesData = (D3D12_RAYTRACING_INSTANCE_DESC*)malloc(sizeof(D3D12_RAYTRACING_INSTANCE_DESC) * m_apCurrentSceneMesh.size());
 	assert(pInstancesData != nullptr);
@@ -164,7 +169,62 @@ void D3DRayTracingScene::ReleaseBVH()
 	*/
 }
 
-void D3DRayTracingScene::flushSceneMesh()
+void D3DRayTracingScene::CreateGlobalRayTracingRootSignature(ID3D12Device5* a_pDevice)
+{
+	if (!D3DDevice::isRayTracingEnabled())
+		return;
+
+	if (m_pRayTracingRootSignature.Get() == nullptr)
+		return;
+
+	// It seems UAV have to be set in Descriptor Tables always ? 
+	D3D12_DESCRIPTOR_RANGE oUAVRange = {};
+	oUAVRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
+	oUAVRange.NumDescriptors = 1;
+
+	D3D12_ROOT_PARAMETER oUAVRootParameter = {};
+	oUAVRootParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+	oUAVRootParameter.DescriptorTable.NumDescriptorRanges = 1;
+	oUAVRootParameter.DescriptorTable.pDescriptorRanges = &oUAVRange;
+
+	D3D12_ROOT_PARAMETER oBVHRootParameter = {};
+	oBVHRootParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
+	oBVHRootParameter.Descriptor.RegisterSpace = 0;
+	oBVHRootParameter.Descriptor.ShaderRegister = 0;
+
+	D3D12_ROOT_PARAMETER oSceneParameter = {};
+	oSceneParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+	oSceneParameter.Descriptor.RegisterSpace = 0;
+	oSceneParameter.Descriptor.ShaderRegister = 0;
+
+	D3D12_ROOT_PARAMETER pRayTracingRootParameters[] = { oUAVRootParameter, oBVHRootParameter, oSceneParameter };
+
+	Microsoft::WRL::ComPtr<ID3DBlob> rsBlob = nullptr;
+	Microsoft::WRL::ComPtr<ID3DBlob> errorBlob = nullptr;
+
+	D3D12_ROOT_SIGNATURE_DESC rsDesc = {};
+	rsDesc.NumParameters = _countof(pRayTracingRootParameters);
+	rsDesc.NumStaticSamplers = 0;
+	rsDesc.pStaticSamplers = NULL;
+	rsDesc.pParameters = pRayTracingRootParameters;
+	rsDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+
+	D3D12SerializeRootSignature(&rsDesc, D3D_ROOT_SIGNATURE_VERSION_1, &rsBlob, &errorBlob);
+	if (errorBlob != nullptr)
+	{
+		void* d = errorBlob->GetBufferPointer();
+		int a = 1;
+		assert(0);
+	}
+
+	if (!SUCCEEDED(a_pDevice->CreateRootSignature(0, rsBlob->GetBufferPointer(), rsBlob->GetBufferSize(), IID_PPV_ARGS(&m_pRayTracingRootSignature))))
+	{
+		OutputDebugStringA("Error : Create Root signature\n");
+		assert(0);
+	}
+}
+
+void D3DRayTracingScene::FlushSceneMesh()
 {
 	if (!D3DDevice::isRayTracingEnabled())
 		return;
@@ -173,6 +233,11 @@ void D3DRayTracingScene::flushSceneMesh()
 	assert(m_pDevice);
 	m_apCurrentSceneMesh.clear();
 	ReleaseBVH();
+}
+
+ID3D12RootSignature* D3DRayTracingScene::GetGlobalRayTracingRootSignature() const
+{
+	return m_pRayTracingRootSignature.Get();
 }
 
 D3DRayTracingScene g_D3DRayTracingScene;
