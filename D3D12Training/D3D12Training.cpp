@@ -435,11 +435,11 @@ void RenderLoop()
     g_defaultCommandList->ClearRenderTargetView(test_rt->m_uiCPUHandle, color, 0, NULL);
 
     // Draw Models;
-    for (UINT i = 0; i < D3DMesh::g_MeshList.size(); i++)
+    for (UINT i = 0; i < D3DMesh::s_MeshList.size(); i++)
     {
         //g_MeshList[i].Draw(g_defaultCommandList.Get());
         //g_MeshList[i].DrawRT(g_defaultCommandList.Get());
-        g_D3DRayTracingScene.SubmitForDraw(&D3DMesh::g_MeshList[i]);
+        g_D3DRayTracingScene.SubmitForDraw(&D3DMesh::s_MeshList[i]);
         //g_D3DRayTracingScene.
     }
 
@@ -455,7 +455,7 @@ void RenderLoop()
 
 
     // Draw Models;
-    for (UINT i = 0; i < D3DMesh::g_MeshList.size(); i++)
+    for (UINT i = 0; i < D3DMesh::s_MeshList.size(); i++)
     {
         //g_MeshList[i].Draw(g_defaultCommandList.Get());
         //g_MeshList[i].DrawRT(g_defaultCommandList.Get());
@@ -492,7 +492,7 @@ void RenderEnd()
     g_commandQueue->ExecuteCommandLists(1, ppCommandLists);
     WaitEndOfFrame();
 
-    g_D3DRayTracingScene.FlushSceneMesh();
+    g_D3DRayTracingScene.FlushRTScene();
 
     if (!SUCCEEDED(g_swapchain->Present(1, 0)))
     {
@@ -540,7 +540,7 @@ int main()
     //oMesh.InitializeDebug(D3DDevice::s_device.Get());
     //oMesh.InitializeDebug(D3DDevice::s_device.Get(), true);
 
-    D3DMesh::g_MeshList.push_back(oMesh);
+    D3DMesh::s_MeshList.push_back(oMesh);
 
 
     test_texture = new D3DTexture;

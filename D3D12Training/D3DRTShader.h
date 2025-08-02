@@ -12,8 +12,8 @@ enum D3D_RT_SHADER_TYPE
 class D3DRTShader
 {
 public:
-	char* m_pByteCode; // Pointer to the begining of the bytecode of the shader
-	UINT64 m_uiByteCodeSize; // Size of the bytecode
+	char* m_pByteCode;
+	UINT64 m_uiByteCodeSize;
 };
 
 class D3DRayGenerationShader : public D3DRTShader
@@ -63,11 +63,14 @@ public:
 * Hit Shaders
 * ___________
 * 
-* Miss shaders :
-* 0 : Skybox
-* 1 : Hit or miss (for AO for example)
+* Ray Generation :
+* 0 : Scene Ray Generation Shader
 * 
-* Hit Shaders :
-* 0 : Basic RT
-* 1 : HiT or Miss
+* Miss table shaders :
+* 0 : AO miss (for AO for example) // TODO : Make AO Shaders
+* 1 : Skybox
+* 
+* Hit table Shaders :
+* 0 : AO Hit // TODO : Make AO Shaders
+* + : Model Shaders
 */

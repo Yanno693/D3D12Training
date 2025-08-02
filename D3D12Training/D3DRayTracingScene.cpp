@@ -13,10 +13,15 @@ void D3DRayTracingScene::Initialize(ID3D12Device5* a_pDevice)
 
 		g_D3DBufferManager.RequestDescriptor(m_uiBVH_CPUHandle, m_uiBVH_GPUHandle);
 
-		m_oSceneRGShader = static_cast<D3DRayGenerationShader*>(g_D3DShaderManager.RequestRTShaderV2("default", RAYGEN));
-	
+		LoadSceneDefaultShaders();
 		CreateGlobalRayTracingRootSignature(a_pDevice);
 	}
+}
+
+void D3DRayTracingScene::LoadSceneDefaultShaders()
+{
+	m_oSceneRGShader = static_cast<D3DRayGenerationShader*>(g_D3DShaderManager.RequestRTShaderV2("default", RAYGEN));
+	m_oSceneMissShader = static_cast<D3DMissShader*>(g_D3DShaderManager.RequestRTShaderV2("default", MISS));
 }
 
 void D3DRayTracingScene::setRenderTarget(D3DTexture* a_pTexture)
@@ -92,8 +97,7 @@ void D3DRayTracingScene::CreateBVH(ID3D12GraphicsCommandList4* a_pCommandList)
 	g_D3DBufferManager.InitializeGenericBuffer(&m_oInstanceUpdateBuffer, sizeof(D3D12_RAYTRACING_INSTANCE_DESC) * m_apCurrentSceneMesh.size());
 	m_oInstanceUpdateBuffer.SetDebugName(L"RT Scene Instance Buffer Update");
 
-	g_D3DBufferManager.InitializeGenericBuffer(&m_oSceneShaderIDBuffer, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES * g_D3DShaderManager.GetRTShadersCount());
-	m_oSceneShaderIDBuffer.SetDebugName(L"RT Scene Shade ID Buffer"); // You'll need to create the RT PSO to fill the shader id buffer if the identifiers
+	CreateShaderIDBuffer();
 
 	//std::vector<char*> g;
 	//g.emplace_back(D3DShaderManager::)
@@ -143,7 +147,15 @@ void D3DRayTracingScene::CreateBVH(ID3D12GraphicsCommandList4* a_pCommandList)
 	a_pCommandList->BuildRaytracingAccelerationStructure(&oBVHBuildDesc, 0, nullptr);
 
 	m_oBVHScratch.WaitForUAV(a_pCommandList);
-};
+}
+
+void D3DRayTracingScene::CreateShaderIDBuffer()
+{
+	g_D3DBufferManager.InitializeGenericBuffer(&m_oSceneShaderIDBuffer, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES * g_D3DShaderManager.GetRTShadersCount());
+	m_oSceneShaderIDBuffer.SetDebugName(L"RT Scene Shader ID Buffer"); // You'll need to create the RT PSO to fill the shader id buffer of the identifiers
+
+	// TODO : The reste once we have the RT PSO
+}
 
 void D3DRayTracingScene::ReleaseBVH()
 {
@@ -224,7 +236,7 @@ void D3DRayTracingScene::CreateGlobalRayTracingRootSignature(ID3D12Device5* a_pD
 	}
 }
 
-void D3DRayTracingScene::FlushSceneMesh()
+void D3DRayTracingScene::FlushRTScene()
 {
 	if (!D3DDevice::isRayTracingEnabled())
 		return;

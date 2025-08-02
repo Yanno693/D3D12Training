@@ -1,14 +1,13 @@
 #include "D3DMesh.h"
 
 #include "D3DDevice.h"
-
 #include <map>
 #include <fstream>
 #include "json.hpp"
 
 GameScreenResolution g_ScreenResolution;
 
-std::vector<D3DMesh> D3DMesh::g_MeshList;
+std::vector<D3DMesh> D3DMesh::s_MeshList;
 
 void D3DMesh::ParseObject(std::string a_sPath)
 {
@@ -560,7 +559,7 @@ void D3DMesh::InitializeDebug(ID3D12Device5* a_pDevice, bool a_bUsesRayTracing)
 		oMissLibSubobject.Type = D3D12_STATE_SUBOBJECT_TYPE_DXIL_LIBRARY;
 		oMissLibSubobject.pDesc = &oMissDXILLib;
 
-		// This is the payload size, struct shader through shaders
+		// This is the payload size, struct shared through shaders
 		D3D12_RAYTRACING_SHADER_CONFIG oShaderConfig;
 		oShaderConfig.MaxPayloadSizeInBytes = 4 * sizeof(float); // float4 for color, I guess ?
 		oShaderConfig.MaxAttributeSizeInBytes = 2 * sizeof(float);
@@ -763,7 +762,6 @@ void D3DMesh::Initialize(std::string a_sPath, ID3D12Device5* a_pDevice, bool a_b
 	
 	ParseObject(sObjectPath.str());
 	ParseModelGLTF(sModelPathGLTF.str(), sModelPathGLTFBin.str());
-	//ParseModel(sModelPath.str());
 
 	CreateGPUBuffers();
 	CreateRTGPUBuffers(a_pDevice);
@@ -982,7 +980,7 @@ void D3DMesh::Initialize(std::string a_sPath, ID3D12Device5* a_pDevice, bool a_b
 			assert(0);
 		}
 
-		//Create Shader table
+		// Create Shader table
 		m_uiShaderIDCount = 3;
 		g_D3DBufferManager.InitializeGenericBuffer(&m_oShaderIDBuffer, m_uiShaderIDCount * D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
 

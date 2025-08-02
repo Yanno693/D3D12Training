@@ -6,5 +6,5 @@ RWTexture2D<float4> uav : register(u0);
 [shader("miss")]
 void mainMiss(inout RTPayload payload)
 {
-    payload.color = float4(1,0,0,0);
+    payload.color = float4(1,1,0,0);
 }

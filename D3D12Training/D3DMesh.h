@@ -81,6 +81,6 @@ public:
 
 	bool m_bIsIndexed = false;
 
-	static std::vector<D3DMesh> g_MeshList;
+	static std::vector<D3DMesh> s_MeshList;
 };
 

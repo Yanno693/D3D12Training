@@ -27,19 +27,22 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_pRayTracingRootSignature;
 
 	D3DRayGenerationShader* m_oSceneRGShader = nullptr;
+	D3DMissShader* m_oSceneMissShader = nullptr;
 
 	void CreateBVH(ID3D12GraphicsCommandList4* a_pCommandList);
+	void CreateShaderIDBuffer(); // Create the Shader ID Buffer for the frame, the buffer is released in ReleaseBVH()
 	void ReleaseBVH();
 
-	void CreateGlobalRayTracingRootSignature(ID3D12Device5* a_pDevice);
+	void LoadSceneDefaultShaders(); // To only call once, load the default Ray gen and Miss Shader for the scene
+	void CreateGlobalRayTracingRootSignature(ID3D12Device5* a_pDevice); // To only call once
 
 public:
 
 	void Initialize(ID3D12Device5* a_pDevice);
 	void setRenderTarget(D3DTexture* a_pTexture);
-	void SubmitForDraw(D3DMesh* a_pMesh);
+	void SubmitForDraw(D3DMesh* a_pMesh); // Register a mesh to draw for the frame (culling could be made with this function ?)
 	void DrawScene(ID3D12GraphicsCommandList4* a_pCommandList);
-	void FlushSceneMesh();
+	void FlushRTScene();
 
 	ID3D12RootSignature* GetGlobalRayTracingRootSignature() const;
 
