@@ -3,7 +3,7 @@
 Microsoft::WRL::ComPtr<ID3D12Debug1>  D3DDevice::s_debugDevice;
 Microsoft::WRL::ComPtr<IDXGIFactory4> D3DDevice::s_factory;
 Microsoft::WRL::ComPtr<IDXGIAdapter1> D3DDevice::s_adapter;
-Microsoft::WRL::ComPtr<ID3D12Device5>  D3DDevice::s_device;
+Microsoft::WRL::ComPtr<ID3D12Device5>  D3DDevice::s_Device;
 bool D3DDevice::s_bIsRayTracingEnabled;
 
 bool D3DDevice::isRayTracingEnabled()
@@ -49,9 +49,9 @@ void D3DDevice::InitializeDevice()
     s_factory->EnumAdapters1(finalAdapterID, &s_adapter);
 
     // Create device finally
-    if (!SUCCEEDED(D3D12CreateDevice(s_adapter.Get(), D3D_FEATURE_LEVEL_12_2, IID_PPV_ARGS(&s_device))))
+    if (!SUCCEEDED(D3D12CreateDevice(s_adapter.Get(), D3D_FEATURE_LEVEL_12_2, IID_PPV_ARGS(&s_Device))))
     {
-        if (!SUCCEEDED(D3D12CreateDevice(s_adapter.Get(), D3D_FEATURE_LEVEL_12_0, IID_PPV_ARGS(&s_device))))
+        if (!SUCCEEDED(D3D12CreateDevice(s_adapter.Get(), D3D_FEATURE_LEVEL_12_0, IID_PPV_ARGS(&s_Device))))
         {
             OutputDebugStringA("Error : Create Device \n");
             assert(0);

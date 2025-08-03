@@ -97,6 +97,8 @@ void D3DRayTracingScene::CreateBVH(ID3D12GraphicsCommandList4* a_pCommandList)
 	g_D3DBufferManager.InitializeGenericBuffer(&m_oInstanceUpdateBuffer, sizeof(D3D12_RAYTRACING_INSTANCE_DESC) * m_apCurrentSceneMesh.size());
 	m_oInstanceUpdateBuffer.SetDebugName(L"RT Scene Instance Buffer Update");
 
+	g_D3DRayTracingScene.CreateGlobalRayTracingPSO(D3DDevice::s_Device.Get());
+
 	CreateShaderIDBuffer();
 
 	//std::vector<char*> g;
@@ -234,6 +236,34 @@ void D3DRayTracingScene::CreateGlobalRayTracingRootSignature(ID3D12Device5* a_pD
 		OutputDebugStringA("Error : Create Root signature\n");
 		assert(0);
 	}
+}
+
+void D3DRayTracingScene::CreateGlobalRayTracingPSO(ID3D12Device5* a_pDevice)
+{
+	if (!D3DDevice::isRayTracingEnabled())
+		return;
+
+	if (!g_D3DShaderManager.IsRTPSODirty())
+		return;
+
+	if (m_pRayTracingPSO.Get() != nullptr)
+	{
+		m_pRayTracingPSO.ReleaseAndGetAddressOf();
+	}
+
+	// 1. Ray hit Gneration Shader, there's always only one (for now ?)
+	auto& oRGShaderSet = g_D3DShaderManager.GetRTShaderSet(D3D_RT_SHADER_TYPE::RAYGEN);
+
+	D3D12_DXIL_LIBRARY_DESC oRGDXILLib = {};
+	//D3DRayGenerationShader* pDefaultRayGenShader = (D3DRayGenerationShader*)oRGShaderSet["default"];
+
+	//D3D12_STATE_SUBOBJECT oRGLibSubobject = {};
+	//oRGLibSubobject.Type = D3D12_STATE_SUBOBJECT_TYPE_DXIL_LIBRARY;
+	//oRGLibSubobject.pDesc = &oRGDXILLib;
+
+	// TODO : PSO
+
+	g_D3DShaderManager.SetRTPSOClean();
 }
 
 void D3DRayTracingScene::FlushRTScene()

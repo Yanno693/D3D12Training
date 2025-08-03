@@ -290,6 +290,8 @@ void D3DShaderManager::LoadRTShader(std::string const a_sPath, D3D_RT_SHADER_TYP
 		m_oMissShaderSet.insert(std::make_pair(a_sPath, pRTShader));
 		break;
 	};
+
+	m_bDirtyRTPSO = true;
 }
 
 D3DShaderPair* D3DShaderManager::RequestShader(std::string const a_sPath)
@@ -338,12 +340,46 @@ D3DRTShader* D3DShaderManager::RequestRTShaderV2(std::string const a_sPath, D3D_
 			return m_oMissShaderSet[a_sPath];
 		}
 		break;
+		default:
+		{
+			return nullptr;
+		}
+		break;
 	};
+}
+
+std::map<std::string, D3DRTShader*>& D3DShaderManager::GetRTShaderSet(D3D_RT_SHADER_TYPE const a_eShaderType)
+{
+	switch (a_eShaderType)
+	{
+	case D3D_RT_SHADER_TYPE::RAYGEN:
+		return m_oRayGenShaderSet;
+		break;
+	case D3D_RT_SHADER_TYPE::HIT:
+		return m_oHitShaderSet;
+		break;
+	case D3D_RT_SHADER_TYPE::MISS:
+		return m_oMissShaderSet;
+		break;
+	default:
+		assert(0);
+		return m_oRayGenShaderSet;
+	}
+}
+
+bool D3DShaderManager::IsRTPSODirty() const
+{
+	return m_bDirtyRTPSO;
+}
+
+void D3DShaderManager::SetRTPSOClean()
+{
+	m_bDirtyRTPSO = false;
 }
 
 UINT D3DShaderManager::GetRTShadersCount() const
 {
-	return m_oRayGenShaderSet.size() + m_oMissShaderSet.size() + m_oHitShaderSet.size();
+	return (UINT)(m_oRayGenShaderSet.size() + m_oMissShaderSet.size() + m_oHitShaderSet.size());
 }
 
 D3DShaderManager g_D3DShaderManager;

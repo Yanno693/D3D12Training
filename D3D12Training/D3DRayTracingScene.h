@@ -25,6 +25,8 @@ private:
 	D3DGenericBuffer m_oSceneShaderIDBuffer;
 
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_pRayTracingRootSignature;
+	Microsoft::WRL::ComPtr<ID3D12StateObject> m_pRayTracingPSO;
+
 
 	D3DRayGenerationShader* m_oSceneRGShader = nullptr;
 	D3DMissShader* m_oSceneMissShader = nullptr;
@@ -35,6 +37,7 @@ private:
 
 	void LoadSceneDefaultShaders(); // To only call once, load the default Ray gen and Miss Shader for the scene
 	void CreateGlobalRayTracingRootSignature(ID3D12Device5* a_pDevice); // To only call once
+	void CreateGlobalRayTracingPSO(ID3D12Device5* a_pDevice);
 
 public:
 

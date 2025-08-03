@@ -213,7 +213,7 @@ HANDLE g_FenceEvent;
 void initD3DCommandsStructs()
 {
     // Command Allocator
-    if (!SUCCEEDED(D3DDevice::s_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&g_commandAllocator))))
+    if (!SUCCEEDED(D3DDevice::s_Device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&g_commandAllocator))))
     {
         OutputDebugStringA("Error : Command Allocator \n");
         assert(0);
@@ -226,7 +226,7 @@ void initD3DCommandsStructs()
     desc.Priority = D3D12_COMMAND_QUEUE_PRIORITY::D3D12_COMMAND_QUEUE_PRIORITY_NORMAL;
     desc.Flags = D3D12_COMMAND_QUEUE_FLAGS::D3D12_COMMAND_QUEUE_FLAG_NONE;
     desc.NodeMask = 0;
-    if (!SUCCEEDED(D3DDevice::s_device->CreateCommandQueue(&desc, IID_PPV_ARGS(&g_commandQueue))))
+    if (!SUCCEEDED(D3DDevice::s_Device->CreateCommandQueue(&desc, IID_PPV_ARGS(&g_commandQueue))))
     {
         OutputDebugStringA("Error : Command Queue \n");
         assert(0);
@@ -234,7 +234,7 @@ void initD3DCommandsStructs()
     g_commandQueue->SetName(L"D3D Command Queue");
 
     // Direct Command List 
-    if (!SUCCEEDED(D3DDevice::s_device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, g_commandAllocator.Get(), NULL, IID_PPV_ARGS(&g_defaultCommandList))))
+    if (!SUCCEEDED(D3DDevice::s_Device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, g_commandAllocator.Get(), NULL, IID_PPV_ARGS(&g_defaultCommandList))))
     {
         OutputDebugStringA("Error : Command List \n");
         assert(0);
@@ -248,7 +248,7 @@ void initD3DCommandsStructs()
         assert(0);
     }
 
-    if (!SUCCEEDED(D3DDevice::s_device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&g_GPUFence))))
+    if (!SUCCEEDED(D3DDevice::s_Device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&g_GPUFence))))
     {
         OutputDebugStringA("Error : Fence Creation \n");
         assert(0);
@@ -341,7 +341,7 @@ void initD3DHeapStructs()
 
 void initD3DRenderTargets()
 {
-    g_D3DRenderTargetManager.Initialize(D3DDevice::s_device.Get(), 1000);
+    g_D3DRenderTargetManager.Initialize(D3DDevice::s_Device.Get(), 1000);
     g_D3DRenderTargetManager.SetDebugName(L"Render Target Manager Decriptor Heap");
     if (!SUCCEEDED(g_swapchain->GetBuffer(0, IID_PPV_ARGS(&g_D3DBackBuffers[0].m_pResource))))
     {
@@ -526,9 +526,9 @@ int main()
     initD3DHeapStructs();
     initD3DRenderTargets();
 
-    g_D3DBufferManager.Initialize(D3DDevice::s_device.Get(), 20000);
+    g_D3DBufferManager.Initialize(D3DDevice::s_Device.Get(), 20000);
     g_D3DBufferManager.SetDebugName(L"SRV Descriptor Heap");
-    g_D3DRayTracingScene.Initialize(D3DDevice::s_device.Get());
+    g_D3DRayTracingScene.Initialize(D3DDevice::s_Device.Get());
 
     g_D3DBufferManager.InitializeConstantBuffer(&g_SceneConstantBuffer, sizeof(_SceneData));
     g_SceneConstantBuffer.SetDebugName(L"Scene Constant Buffer");
@@ -536,7 +536,7 @@ int main()
 
     D3DMesh oMesh;
     //oMesh.Initialize("monkey", D3DDevice::s_device.Get());
-    oMesh.Initialize("monkey", D3DDevice::s_device.Get(), true);
+    oMesh.Initialize("monkey", D3DDevice::s_Device.Get(), true);
     //oMesh.InitializeDebug(D3DDevice::s_device.Get());
     //oMesh.InitializeDebug(D3DDevice::s_device.Get(), true);
 
