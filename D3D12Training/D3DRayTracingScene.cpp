@@ -64,8 +64,8 @@ void D3DRayTracingScene::DrawScene(ID3D12GraphicsCommandList4* a_pCommandList)
 
 	CreateBVH(a_pCommandList);
 
-	a_pCommandList->SetPipelineState1(m_apCurrentSceneMesh[0]->m_pRayTracingPso.Get());
-	a_pCommandList->SetComputeRootSignature(m_apCurrentSceneMesh[0]->m_pRayTracingRootSignature.Get());
+	a_pCommandList->SetPipelineState1(m_pRayTracingPSO.Get());
+	a_pCommandList->SetComputeRootSignature(m_pRayTracingRootSignature.Get());
 
 	ID3D12DescriptorHeap* heaps[1];
 	heaps[0] = g_D3DBufferManager.GetHeap();
