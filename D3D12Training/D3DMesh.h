@@ -65,7 +65,12 @@ public:
 	UINT m_uiShaderIDCount = 0;
 	D3D12_RAYTRACING_GEOMETRY_DESC m_oBVHGeometry = {};
 	D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS m_oBVHInput = {};
-	D3DRTShaderGroup* m_pRTShader = nullptr;
+	//D3DRTShaderGroup* m_pRTShader = nullptr;
+
+	D3DRayGenerationShader* m_pRayGenShader = nullptr;
+	D3DHitShader* m_pHitShader = nullptr;
+	D3DMissShader* m_pMissShader = nullptr;
+
 	ID3D12Resource* shaderIDs;
 
 	D3DConstantBuffer m_oInstanceBuffer; // Constant Buffer for the mesh, contains the transform of the object (on the Model matrix)

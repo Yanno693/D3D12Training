@@ -38,7 +38,9 @@ void D3DMesh::ParseObject(std::string a_sPath)
 	{
 		XMLElement* pXMLRTShader = pXMLRoot->FirstChildElement("rtshader");
 		assert(pXMLRTShader != nullptr);
-		m_pRTShader = g_D3DShaderManager.RequestRTShader(pXMLRTShader->GetText());
+		m_pRayGenShader = (D3DRayGenerationShader*)g_D3DShaderManager.RequestRTShaderV2("default", D3D_RT_SHADER_TYPE::RAYGEN); // TODO : Delete, should not be here
+		m_pHitShader = (D3DHitShader*)g_D3DShaderManager.RequestRTShaderV2(pXMLRTShader->GetText(), D3D_RT_SHADER_TYPE::HIT);
+		m_pMissShader = (D3DMissShader*)g_D3DShaderManager.RequestRTShaderV2("default", D3D_RT_SHADER_TYPE::MISS); // TODO : Delete this too
 	}
 
 	XMLElement* pXMLTransform = pXMLRoot->FirstChildElement("transform");
@@ -425,7 +427,10 @@ void D3DMesh::InitializeDebug(ID3D12Device5* a_pDevice, bool a_bUsesRayTracing)
 	if (a_bUsesRayTracing)
 	{
 		// 1. Load Shader
-		m_pRTShader = g_D3DShaderManager.RequestRTShader("basicsolidrt");
+		m_pRayGenShader = (D3DRayGenerationShader*)g_D3DShaderManager.RequestRTShaderV2("default", D3D_RT_SHADER_TYPE::RAYGEN);
+		m_pHitShader = (D3DHitShader*)g_D3DShaderManager.RequestRTShaderV2("basicsolidrt", D3D_RT_SHADER_TYPE::HIT);
+		m_pMissShader = (D3DMissShader*)g_D3DShaderManager.RequestRTShaderV2("default", D3D_RT_SHADER_TYPE::MISS);
+
 
 		// 2. Fill With something
 		_3DVertex vVertex[3] = {
@@ -525,12 +530,12 @@ void D3DMesh::InitializeDebug(ID3D12Device5* a_pDevice, bool a_bUsesRayTracing)
 		D3D12_SHADER_BYTECODE oRGByteCode;
 		D3D12_SHADER_BYTECODE oHitByteCode;
 		D3D12_SHADER_BYTECODE oMissByteCode;
-		oRGByteCode.pShaderBytecode = m_pRTShader->m_pRGS->m_pByteCode;
-		oRGByteCode.BytecodeLength = m_pRTShader->m_pRGS->m_uiByteCodeSize;
-		oHitByteCode.pShaderBytecode = m_pRTShader->m_pHS->m_pByteCode;
-		oHitByteCode.BytecodeLength = m_pRTShader->m_pHS->m_uiByteCodeSize;
-		oMissByteCode.pShaderBytecode = m_pRTShader->m_pMS->m_pByteCode;
-		oMissByteCode.BytecodeLength = m_pRTShader->m_pMS->m_uiByteCodeSize;
+		oRGByteCode.pShaderBytecode = m_pRayGenShader->m_pByteCode;
+		oRGByteCode.BytecodeLength = m_pRayGenShader->m_uiByteCodeSize;
+		oHitByteCode.pShaderBytecode = m_pHitShader->m_pByteCode;
+		oHitByteCode.BytecodeLength = m_pHitShader->m_uiByteCodeSize;
+		oMissByteCode.pShaderBytecode = m_pMissShader->m_pByteCode;
+		oMissByteCode.BytecodeLength = m_pMissShader->m_uiByteCodeSize;
 
 		D3D12_DXIL_LIBRARY_DESC oRGDXILLib = {};
 		D3D12_DXIL_LIBRARY_DESC oHitDXILLib = {};
@@ -903,12 +908,12 @@ void D3DMesh::Initialize(std::string a_sPath, ID3D12Device5* a_pDevice, bool a_b
 		D3D12_SHADER_BYTECODE oRGByteCode;
 		D3D12_SHADER_BYTECODE oHitByteCode;
 		D3D12_SHADER_BYTECODE oMissByteCode;
-		oRGByteCode.pShaderBytecode = m_pRTShader->m_pRGS->m_pByteCode;
-		oRGByteCode.BytecodeLength = m_pRTShader->m_pRGS->m_uiByteCodeSize;
-		oHitByteCode.pShaderBytecode = m_pRTShader->m_pHS->m_pByteCode;
-		oHitByteCode.BytecodeLength = m_pRTShader->m_pHS->m_uiByteCodeSize;
-		oMissByteCode.pShaderBytecode = m_pRTShader->m_pMS->m_pByteCode;
-		oMissByteCode.BytecodeLength = m_pRTShader->m_pMS->m_uiByteCodeSize;
+		oRGByteCode.pShaderBytecode = m_pRayGenShader->m_pByteCode;
+		oRGByteCode.BytecodeLength = m_pRayGenShader->m_uiByteCodeSize;
+		oHitByteCode.pShaderBytecode = m_pHitShader->m_pByteCode;
+		oHitByteCode.BytecodeLength = m_pHitShader->m_uiByteCodeSize;
+		oMissByteCode.pShaderBytecode = m_pMissShader->m_pByteCode;
+		oMissByteCode.BytecodeLength = m_pMissShader->m_uiByteCodeSize;
 
 		D3D12_DXIL_LIBRARY_DESC oRGDXILLib = {};
 		D3D12_DXIL_LIBRARY_DESC oHitDXILLib = {};

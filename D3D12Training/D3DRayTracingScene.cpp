@@ -188,7 +188,7 @@ void D3DRayTracingScene::CreateGlobalRayTracingRootSignature(ID3D12Device5* a_pD
 	if (!D3DDevice::isRayTracingEnabled())
 		return;
 
-	if (m_pRayTracingRootSignature.Get() == nullptr)
+	if (m_pRayTracingRootSignature.Get() != nullptr)
 		return;
 
 	// It seems UAV have to be set in Descriptor Tables always ? 
@@ -251,17 +251,130 @@ void D3DRayTracingScene::CreateGlobalRayTracingPSO(ID3D12Device5* a_pDevice)
 		m_pRayTracingPSO.ReleaseAndGetAddressOf();
 	}
 
-	// 1. Ray hit Gneration Shader, there's always only one (for now ?)
 	auto& oRGShaderSet = g_D3DShaderManager.GetRTShaderSet(D3D_RT_SHADER_TYPE::RAYGEN);
+	auto& oMissShaderSet = g_D3DShaderManager.GetRTShaderSet(D3D_RT_SHADER_TYPE::MISS);
+	auto& oHitShaderSet = g_D3DShaderManager.GetRTShaderSet(D3D_RT_SHADER_TYPE::HIT);
+
+	// 1 for Ray Gen shader
+	// n for Miss shaders
+	// n for Hit Shaders
+	// 1 for Hit Group
+	// 1 for Shader Config
+	// 1 for Root Signature
+	// 1 for RT Pipeline Config
+	const UINT c_uiSubobjectCount = 5 + oHitShaderSet.size() + oMissShaderSet.size();
+	UINT uiSubobjectCounter = 0;
+	D3D12_STATE_SUBOBJECT* aSubobject = new D3D12_STATE_SUBOBJECT[c_uiSubobjectCount];
+
+	// 1. Ray Generation Shader, there's always only one (for now ?)
+	D3DRayGenerationShader* oSceneRGShader = (D3DRayGenerationShader*)oRGShaderSet["default"];
+
+	D3D12_SHADER_BYTECODE oRGByteCode;
+	oRGByteCode.pShaderBytecode = oSceneRGShader->m_pByteCode;
+	oRGByteCode.BytecodeLength = oSceneRGShader->m_uiByteCodeSize;
 
 	D3D12_DXIL_LIBRARY_DESC oRGDXILLib = {};
-	//D3DRayGenerationShader* pDefaultRayGenShader = (D3DRayGenerationShader*)oRGShaderSet["default"];
+	oRGDXILLib.DXILLibrary = oRGByteCode;
 
-	//D3D12_STATE_SUBOBJECT oRGLibSubobject = {};
-	//oRGLibSubobject.Type = D3D12_STATE_SUBOBJECT_TYPE_DXIL_LIBRARY;
-	//oRGLibSubobject.pDesc = &oRGDXILLib;
+	D3D12_STATE_SUBOBJECT oRGLibSubobject = {};
+	oRGLibSubobject.Type = D3D12_STATE_SUBOBJECT_TYPE_DXIL_LIBRARY;
+	oRGLibSubobject.pDesc = &oRGDXILLib;
 
-	// TODO : PSO
+	aSubobject[uiSubobjectCounter] = oRGLibSubobject;
+	uiSubobjectCounter++;
+
+	// 2. Miss Shaders
+	for (const auto& roMissShader : oMissShaderSet)
+	{
+		D3D12_SHADER_BYTECODE oMissByteCode;
+		oMissByteCode.pShaderBytecode = roMissShader.second->m_pByteCode;
+		oMissByteCode.BytecodeLength = roMissShader.second->m_uiByteCodeSize;
+
+		D3D12_DXIL_LIBRARY_DESC oMissDXILLib = {};
+		oMissDXILLib.DXILLibrary = oMissByteCode;
+
+		D3D12_STATE_SUBOBJECT oMissLibSubobject = {};
+		oMissLibSubobject.Type = D3D12_STATE_SUBOBJECT_TYPE_DXIL_LIBRARY;
+		oMissLibSubobject.pDesc = &oMissDXILLib;
+
+		aSubobject[uiSubobjectCounter] = oMissLibSubobject;
+		uiSubobjectCounter++;
+	}
+
+	// 3. Hit Shaders
+	for (const auto& roHitShader : oHitShaderSet)
+	{
+		D3D12_SHADER_BYTECODE oHitByteCode;
+		oHitByteCode.pShaderBytecode = roHitShader.second->m_pByteCode;
+		oHitByteCode.BytecodeLength = roHitShader.second->m_uiByteCodeSize;
+
+		D3D12_DXIL_LIBRARY_DESC oHitDXILLib = {};
+		oHitDXILLib.DXILLibrary = oHitByteCode;
+
+		D3D12_STATE_SUBOBJECT oHitLibSubobject = {};
+		oHitLibSubobject.Type = D3D12_STATE_SUBOBJECT_TYPE_DXIL_LIBRARY;
+		oHitLibSubobject.pDesc = &oHitDXILLib;
+
+		aSubobject[uiSubobjectCounter] = oHitLibSubobject;
+		uiSubobjectCounter++;
+	}
+
+	// 4. Hit Group
+	D3D12_HIT_GROUP_DESC oHitGroup = {};
+	oHitGroup.Type = D3D12_HIT_GROUP_TYPE_TRIANGLES;
+	oHitGroup.HitGroupExport = L"HitGroup";
+	oHitGroup.ClosestHitShaderImport = L"mainHit";
+	D3D12_STATE_SUBOBJECT oHitGroupSubobject = {};
+	oHitGroupSubobject.Type = D3D12_STATE_SUBOBJECT_TYPE_HIT_GROUP;
+	oHitGroupSubobject.pDesc = &oHitGroup;
+	aSubobject[uiSubobjectCounter] = oHitGroupSubobject;
+	uiSubobjectCounter++;
+
+	// 5. Shader config
+	// This is the payload size, struct shared through shaders
+	D3D12_RAYTRACING_SHADER_CONFIG oShaderConfig;
+	oShaderConfig.MaxPayloadSizeInBytes = 4 * sizeof(float); // float4 for color, I guess ?
+	oShaderConfig.MaxAttributeSizeInBytes = 2 * sizeof(float);
+	D3D12_STATE_SUBOBJECT oShaderConfigSubobject = {};
+	oShaderConfigSubobject.Type = D3D12_STATE_SUBOBJECT_TYPE_RAYTRACING_SHADER_CONFIG;
+	oShaderConfigSubobject.pDesc = &oShaderConfig;
+	aSubobject[uiSubobjectCounter] = oShaderConfigSubobject;
+	uiSubobjectCounter++;
+
+	// 6. Root Signature
+	// This is the root signature, it's shared between the ray tracing shaders (same BVH, same UAV texture)
+	D3D12_GLOBAL_ROOT_SIGNATURE oGlobalSig = {};
+	oGlobalSig.pGlobalRootSignature = m_pRayTracingRootSignature.Get();
+	D3D12_STATE_SUBOBJECT oGlobalRootSignatureSubobject = {};
+	oGlobalRootSignatureSubobject.Type = D3D12_STATE_SUBOBJECT_TYPE_GLOBAL_ROOT_SIGNATURE;
+	oGlobalRootSignatureSubobject.pDesc = &oGlobalSig;
+	aSubobject[uiSubobjectCounter] = oGlobalRootSignatureSubobject;
+	uiSubobjectCounter++;
+
+	// 7. RT Pipeline Config
+	// This holds the number of bounce it seems
+	D3D12_RAYTRACING_PIPELINE_CONFIG oRTPipeline = {};
+	oRTPipeline.MaxTraceRecursionDepth = 1;
+	D3D12_STATE_SUBOBJECT oRTPipelineSubobject = {};
+	oRTPipelineSubobject.Type = D3D12_STATE_SUBOBJECT_TYPE_RAYTRACING_PIPELINE_CONFIG;
+	oRTPipelineSubobject.pDesc = &oRTPipeline;
+	aSubobject[uiSubobjectCounter] = oRTPipelineSubobject;
+	uiSubobjectCounter++;
+
+	D3D12_STATE_OBJECT_DESC oRayTracingPS0Desc = {};
+	oRayTracingPS0Desc.Type = D3D12_STATE_OBJECT_TYPE_RAYTRACING_PIPELINE;
+	oRayTracingPS0Desc.pSubobjects = aSubobject;
+	oRayTracingPS0Desc.NumSubobjects = c_uiSubobjectCount;
+
+	if (!SUCCEEDED(a_pDevice->CreateStateObject(&oRayTracingPS0Desc, IID_PPV_ARGS(&m_pRayTracingPSO))))
+	{
+		OutputDebugStringA("Error : Create Ray Tracing Root signature\n");
+		assert(0);
+	}
+
+	// TODO : DO
+
+	delete[] aSubobject;
 
 	g_D3DShaderManager.SetRTPSOClean();
 }
