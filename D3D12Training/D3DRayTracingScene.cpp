@@ -372,8 +372,6 @@ void D3DRayTracingScene::CreateGlobalRayTracingPSO(ID3D12Device5* a_pDevice)
 		assert(0);
 	}
 
-	// TODO : DO
-
 	delete[] aSubobject;
 
 	g_D3DShaderManager.SetRTPSOClean();
