@@ -237,20 +237,24 @@ void D3DShaderManager::LoadRTShader(std::string const a_sPath, D3D_RT_SHADER_TYP
 {
 	D3DRTShader* pRTShader = nullptr;
 	std::string sShaderPathSuffix;
+	std::string sShaderIdentifierSuffix;
 
 	switch (a_eShaderType)
 	{
 		case RAYGEN:
 			pRTShader = new D3DRayGenerationShader();
 			sShaderPathSuffix = "_rg.cso";
+			sShaderIdentifierSuffix = "_raygen";
 			break;
 		case HIT :
 			pRTShader = new D3DHitShader();
 			sShaderPathSuffix = "_ch.cso";
+			sShaderIdentifierSuffix = "_hit";
 			break;
 		case MISS:
 			pRTShader = new D3DMissShader();
 			sShaderPathSuffix = "_miss.cso";
+			sShaderIdentifierSuffix = "_miss";
 			break;
 	};
 	assert(pRTShader != nullptr);
@@ -272,6 +276,7 @@ void D3DShaderManager::LoadRTShader(std::string const a_sPath, D3D_RT_SHADER_TYP
 
 	pRTShader->m_uiByteCodeSize = uiFileSize;
 	pRTShader->m_pByteCode = new char[uiFileSize];
+	pRTShader->m_szShaderIdentifier = a_sPath + sShaderIdentifierSuffix;
 
 	BOOL bReadFileResult = ReadFile(pFileHandle, pRTShader->m_pByteCode, uiFileSize, NULL, NULL);
 	assert(bReadFileResult != 0);

@@ -625,7 +625,7 @@ void D3DMesh::InitializeDebug(ID3D12Device5* a_pDevice, bool a_bUsesRayTracing)
 
 		apShaderID[0] = oRTPSOProperties->GetShaderIdentifier(L"mainRayGen");
 		apShaderID[1] = oRTPSOProperties->GetShaderIdentifier(L"mainMiss");
-		apShaderID[2] = oRTPSOProperties->GetShaderIdentifier(L"HitGroup");
+		apShaderID[2] = oRTPSOProperties->GetShaderIdentifier(L"HittGroup");
 		assert(apShaderID[0] != nullptr);
 		assert(apShaderID[1] != nullptr);
 		assert(apShaderID[2] != nullptr);
@@ -923,10 +923,11 @@ void D3DMesh::Initialize(std::string a_sPath, ID3D12Device5* a_pDevice, bool a_b
 		oMissDXILLib.DXILLibrary = oMissByteCode;
 
 		// This structs is basically here to say "when we touch something , we do some of these"
+		std::wstring szWideShaderIdentifier(m_pHitShader->m_szShaderIdentifier.begin(), m_pHitShader->m_szShaderIdentifier.end());
 		D3D12_HIT_GROUP_DESC oHitGroup = {};
 		oHitGroup.Type = D3D12_HIT_GROUP_TYPE_TRIANGLES;
 		oHitGroup.HitGroupExport = L"HitGroup";
-		oHitGroup.ClosestHitShaderImport = L"mainHit";
+		oHitGroup.ClosestHitShaderImport = szWideShaderIdentifier.c_str();
 		D3D12_STATE_SUBOBJECT oHitGroupSubobject = {};
 		oHitGroupSubobject.Type = D3D12_STATE_SUBOBJECT_TYPE_HIT_GROUP;
 		oHitGroupSubobject.pDesc = &oHitGroup;
@@ -1001,8 +1002,8 @@ void D3DMesh::Initialize(std::string a_sPath, ID3D12Device5* a_pDevice, bool a_b
 		ZeroMemory(apShaderID, sizeof(apShaderID));
 		ZeroMemory(apShaderIDData, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES * 3);
 
-		apShaderID[0] = oRTPSOProperties->GetShaderIdentifier(L"mainRayGen");
-		apShaderID[1] = oRTPSOProperties->GetShaderIdentifier(L"mainMiss");
+		apShaderID[0] = oRTPSOProperties->GetShaderIdentifier(L"default_raygen");
+		apShaderID[1] = oRTPSOProperties->GetShaderIdentifier(L"default_miss");
 		apShaderID[2] = oRTPSOProperties->GetShaderIdentifier(L"HitGroup");
 		assert(apShaderID[0] != nullptr);
 		assert(apShaderID[1] != nullptr);
@@ -1065,10 +1066,9 @@ void D3DMesh::Draw(ID3D12GraphicsCommandList* a_pCommandList)
 
 void D3DMesh::DrawRT(ID3D12GraphicsCommandList4* a_pCommandList)
 {
-	D3D12_DISPATCH_RAYS_DESC oRayDispatch = {}; // TODO : fill this
-
 	a_pCommandList->SetPipelineState1(m_pRayTracingPso.Get());
 
+	D3D12_DISPATCH_RAYS_DESC oRayDispatch = {};
 	oRayDispatch.RayGenerationShaderRecord.SizeInBytes = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
 	oRayDispatch.RayGenerationShaderRecord.StartAddress = m_oShaderIDBuffer.m_pResource.Get()->GetGPUVirtualAddress();
 	oRayDispatch.MissShaderTable.SizeInBytes = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;

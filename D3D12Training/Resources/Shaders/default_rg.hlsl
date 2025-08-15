@@ -4,7 +4,7 @@ RaytracingAccelerationStructure scene : register(t0);
 RWTexture2D<float4> uav : register(u0);
 
 [shader("raygeneration")]
-void mainRayGen()
+void default_raygen()
 {
     uint2 idx = DispatchRaysIndex().xy;
     uint3 dim = DispatchRaysDimensions();

@@ -4,7 +4,7 @@ RaytracingAccelerationStructure scene : register(t0);
 RWTexture2D<float4> uav : register(u0);
 
 [shader("miss")]
-void mainMiss(inout RTPayload payload)
+void default_miss(inout RTPayload payload)
 {
-    payload.color = float4(1,1,0,0);
+    payload.color = float4(1,0,1,0);
 }

@@ -14,6 +14,7 @@ class D3DRTShader
 public:
 	char* m_pByteCode;
 	UINT64 m_uiByteCodeSize;
+	std::string m_szShaderIdentifier;
 };
 
 class D3DRayGenerationShader : public D3DRTShader
