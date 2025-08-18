@@ -27,8 +27,10 @@ void D3DMesh::ParseObject(std::string a_sPath)
 
 	XMLElement* pXMLModel = pXMLRoot->FirstChildElement("model");
 	assert(pXMLModel != nullptr);
-	std::stringstream ssModePath;
-	ssModePath << "./Models/" << pXMLModel->GetText();
+	std::stringstream ssModelPath;
+	ssModelPath << "./Models/" << pXMLModel->GetText();
+
+	m_szModelPath = ssModelPath.str();
 
 	XMLElement* pXMLShader = pXMLRoot->FirstChildElement("shader");
 	assert(pXMLShader != nullptr);
@@ -51,7 +53,11 @@ void D3DMesh::ParseObject(std::string a_sPath)
 	apXMLTransformElements[1] = pXMLTransform->FirstChildElement("rotation");
 	apXMLTransformElements[2] = pXMLTransform->FirstChildElement("scale");
 
-	float* pfTransfotmData = &m_oTransform.position.x;
+	float* pfTransformData[3];
+
+	pfTransformData[0] = &m_oTransform.position.x;
+	pfTransformData[1] = &m_oTransform.rotation.x;
+	pfTransformData[2] = &m_oTransform.scale.x;
 
 	for (int i = 0; i < 3; i++)
 	{
@@ -73,12 +79,12 @@ void D3DMesh::ParseObject(std::string a_sPath)
 		ssY << pXMLY->GetText();
 		ssZ << pXMLZ->GetText();
 
-		*pfTransfotmData = std::stof(ssX.str());
-		pfTransfotmData++;
-		*pfTransfotmData = std::stof(ssY.str());
-		pfTransfotmData++;
-		*pfTransfotmData = std::stof(ssZ.str());
-		pfTransfotmData++;
+		*pfTransformData[i] = std::stof(ssX.str());
+		pfTransformData[i]++;
+		*pfTransformData[i] = std::stof(ssY.str());
+		pfTransformData[i]++;
+		*pfTransformData[i] = std::stof(ssZ.str());
+		pfTransformData[i]++;
 	}
 }
 
@@ -752,8 +758,6 @@ void D3DMesh::InitializeDebug(ID3D12Device5* a_pDevice, bool a_bUsesRayTracing)
 
 void D3DMesh::Initialize(std::string a_sPath, ID3D12Device5* a_pDevice, bool a_bUsesRayTracing)
 {
-	// Todo : Load a file and parse it
-
 	std::stringstream sObjectPath;
 	std::stringstream sModelPath;
 	std::stringstream sModelPathGLTF;
@@ -766,7 +770,7 @@ void D3DMesh::Initialize(std::string a_sPath, ID3D12Device5* a_pDevice, bool a_b
 	assert(m_pShader == nullptr);
 	
 	ParseObject(sObjectPath.str());
-	ParseModelGLTF(sModelPathGLTF.str(), sModelPathGLTFBin.str());
+	ParseModelGLTF(m_szModelPath + ".gltf", m_szModelPath + ".bin");
 
 	CreateGPUBuffers();
 	CreateRTGPUBuffers(a_pDevice);
@@ -1066,6 +1070,7 @@ void D3DMesh::Draw(ID3D12GraphicsCommandList* a_pCommandList)
 
 void D3DMesh::DrawRT(ID3D12GraphicsCommandList4* a_pCommandList)
 {
+	/*
 	a_pCommandList->SetPipelineState1(m_pRayTracingPso.Get());
 
 	D3D12_DISPATCH_RAYS_DESC oRayDispatch = {};
@@ -1080,6 +1085,7 @@ void D3DMesh::DrawRT(ID3D12GraphicsCommandList4* a_pCommandList)
 	oRayDispatch.Depth = 1;
 
 	a_pCommandList->DispatchRays(&oRayDispatch);
+	*/
 }
 
 void D3DMesh::SetPosition(const GamePosition& a_rPosition)

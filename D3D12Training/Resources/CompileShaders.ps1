@@ -16,19 +16,13 @@ function compileShader($shader)
 
 function compileShaderRT($shader)
 {
-    $shader_rg_src   = ".\Shaders\" + $shader + "_rg.hlsl"
     $shader_ch_src   = ".\Shaders\" + $shader + "_ch.hlsl"
-    $shader_miss_src = ".\Shaders\" + $shader + "_miss.hlsl"
 
-    $shader_rg_cso     = ".\Shaders\" + $shader + "_rg.cso"
     $shader_ch_cso     = ".\Shaders\" + $shader + "_ch.cso"
-    $shader_miss_cso   = ".\Shaders\" + $shader + "_miss.cso"
     
 
     Write-Output "Compiling RT $shader ..."
-    ./dxc.exe -Od -Zi -Qembed_debug -E mainRayGen -T lib_6_3 -Fo $shader_rg_cso $shader_rg_src
     ./dxc.exe -Od -Zi -Qembed_debug -E mainHit -T lib_6_3 -Fo $shader_ch_cso $shader_ch_src
-    ./dxc.exe -Od -Zi -Qembed_debug -E mainMiss -T lib_6_3 -Fo $shader_miss_cso $shader_miss_src
 }
 
 function compileShaderRayGenRT($shader)
@@ -55,5 +49,6 @@ function compileShaderMissRT($shader)
 compileShader("test")
 compileShader("basicsolid")
 compileShaderRT("basicsolidrt")
+compileShaderRT("basicsolidrt2")
 compileShaderRayGenRT("default")
 compileShaderMissRT("default")

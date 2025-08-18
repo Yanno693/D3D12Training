@@ -535,12 +535,15 @@ int main()
     g_SceneData.oViewProjMatrix = DirectX::XMMatrixIdentity();
 
     D3DMesh oMesh;
+    D3DMesh oMesh2;
     //oMesh.Initialize("monkey", D3DDevice::s_device.Get());
     oMesh.Initialize("monkey", D3DDevice::s_Device.Get(), true);
+    oMesh2.Initialize("monkey2", D3DDevice::s_Device.Get(), true);
     //oMesh.InitializeDebug(D3DDevice::s_device.Get());
     //oMesh.InitializeDebug(D3DDevice::s_device.Get(), true);
 
     D3DMesh::s_MeshList.push_back(oMesh);
+    D3DMesh::s_MeshList.push_back(oMesh2);
 
 
     test_texture = new D3DTexture;

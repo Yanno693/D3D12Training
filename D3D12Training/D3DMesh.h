@@ -24,8 +24,8 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> m_pPso;
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_pRootSignature;
 
-
 	GameTransform m_oTransform;
+	std::string m_szModelPath; // Path of the model to load without extension
 
 	void ParseObject(std::string a_sPath); // Load the object
 	void ParseModel(std::string a_sPath); // Load the geometry of the object (ParseObject has to be called first)
