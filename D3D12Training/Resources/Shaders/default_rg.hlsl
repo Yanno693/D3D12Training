@@ -31,10 +31,7 @@ void default_raygen()
 
     RTPayload payLoad;
 
-    TraceRay(scene, RAY_FLAG_NONE, 0xFF, 0, 0, 0, ray, payLoad);
-
-    //uav[idx] = float4(0, 0.5, 0.5, 1);
-
+    TraceRay(scene, RAY_FLAG_NONE, 0xFF, 0, 1, 0, ray, payLoad);
 
     uav[out_idx] = payLoad.color;
 }

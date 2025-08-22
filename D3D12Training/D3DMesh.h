@@ -49,8 +49,6 @@ private:
 	UINT m_uiIndicesCount = 0; // Number of indices for the mesh vertices
 
 public:
-	Microsoft::WRL::ComPtr<ID3D12StateObject> m_pRayTracingPso; // TODO : PRIVATE !
-	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_pRayTracingRootSignature; // TODO : PRIVATE !
 	// Raster Stuff
 	D3DVertexBuffer m_oVertexBuffer; // Vertex Buffer of the Mesh
 	D3DIndexBuffer m_oIndexBuffer; // Index buffer ot the mesh
@@ -61,8 +59,6 @@ public:
 	D3DRayTracingIndexBuffer m_oRTIndexBuffer; // Index buffer ot the mesh
 	D3DGenericBuffer m_oBVH; // "Bottom Level Acceleration Stucture", basically a sort of BVH
 	D3DGenericBuffer m_oBVHScratch; // "Bottom Level Acceleration Stucture" but for updating ?
-	D3DGenericBuffer m_oShaderIDBuffer; // Buffer holding Shader IDs for ray tracing
-	UINT m_uiShaderIDCount = 0;
 	D3D12_RAYTRACING_GEOMETRY_DESC m_oBVHGeometry = {};
 	D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS m_oBVHInput = {};
 	//D3DRTShaderGroup* m_pRTShader = nullptr;
@@ -71,10 +67,7 @@ public:
 	D3DHitShader* m_pHitShader = nullptr;
 	D3DMissShader* m_pMissShader = nullptr;
 
-	ID3D12Resource* shaderIDs;
-
 	D3DConstantBuffer m_oInstanceBuffer; // Constant Buffer for the mesh, contains the transform of the object (on the Model matrix)
-
 
 	void Initialize(std::string const a_sPath, ID3D12Device5* a_pDevice, bool a_bUsesRayTracing = false);
 	void InitializeDebug(ID3D12Device5* a_pDevice, bool a_bUsesRayTracing = false);

@@ -77,14 +77,16 @@ void D3DRayTracingScene::DrawScene(ID3D12GraphicsCommandList4* a_pCommandList)
 
 	D3D12_DISPATCH_RAYS_DESC oRayDispatch = {};
 	oRayDispatch.RayGenerationShaderRecord.SizeInBytes = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
-	//oRayDispatch.RayGenerationShaderRecord.StartAddress = m_apCurrentSceneMesh[0]->m_oShaderIDBuffer.m_pResource.Get()->GetGPUVirtualAddress();
 	oRayDispatch.RayGenerationShaderRecord.StartAddress = m_oSceneShaderIDBuffer.m_pResource.Get()->GetGPUVirtualAddress();
+
 	oRayDispatch.MissShaderTable.SizeInBytes = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES * g_D3DShaderManager.GetRTShaderSet(D3D_RT_SHADER_TYPE::MISS).size();
-	//oRayDispatch.MissShaderTable.StartAddress = m_apCurrentSceneMesh[0]->m_oShaderIDBuffer.m_pResource.Get()->GetGPUVirtualAddress() + 1 * D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT;
 	oRayDispatch.MissShaderTable.StartAddress = m_oSceneShaderIDBuffer.m_pResource.Get()->GetGPUVirtualAddress() + 1 * D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT;
-	oRayDispatch.HitGroupTable.SizeInBytes = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
-	//oRayDispatch.HitGroupTable.StartAddress = m_apCurrentSceneMesh[0]->m_oShaderIDBuffer.m_pResource.Get()->GetGPUVirtualAddress() + 2 * D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT;
-	oRayDispatch.HitGroupTable.StartAddress = m_oSceneShaderIDBuffer.m_pResource.Get()->GetGPUVirtualAddress() + (1 + g_D3DShaderManager.GetRTShaderSet(D3D_RT_SHADER_TYPE::MISS).size()) * D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT;
+	//oRayDispatch.MissShaderTable.StartAddress = m_oSceneShaderIDBuffer.m_pResource.Get()->GetGPUVirtualAddress() + 1 * D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT;
+
+	oRayDispatch.HitGroupTable.SizeInBytes = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES * g_D3DShaderManager.GetRTShaderSet(D3D_RT_SHADER_TYPE::HIT).size();
+//	oRayDispatch.HitGroupTable.StartAddress = m_oSceneShaderIDBuffer.m_pResource.Get()->GetGPUVirtualAddress() + (1 + g_D3DShaderManager.GetRTShaderSet(D3D_RT_SHADER_TYPE::MISS).size()) * D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT;
+	oRayDispatch.HitGroupTable.StartAddress = m_oSceneShaderIDBuffer.m_pResource.Get()->GetGPUVirtualAddress() + 2 * D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT;
+	
 	oRayDispatch.Width = m_pRenderTarget->GetWidth();
 	oRayDispatch.Height = m_pRenderTarget->GetHeight();
 	oRayDispatch.Depth = 1;
@@ -110,8 +112,10 @@ void D3DRayTracingScene::CreateBVH(ID3D12GraphicsCommandList4* a_pCommandList)
 	{
 		pInstancesData[i] = {};
 		pInstancesData[i].InstanceID = i;
-		pInstancesData[i].InstanceMask = 1;
+		pInstancesData[i].InstanceMask = 0xFF;
 		pInstancesData[i].AccelerationStructure = m_apCurrentSceneMesh[i]->m_oBVH.m_pResource.Get()->GetGPUVirtualAddress();
+
+		pInstancesData[i].InstanceContributionToHitGroupIndex = i;
 
 		GamePosition oMeshPosition = m_apCurrentSceneMesh[i]->GetPosition();
 		DirectX::XMMatrixTranslation(oMeshPosition.x, oMeshPosition.y, oMeshPosition.z);
@@ -159,7 +163,7 @@ void D3DRayTracingScene::CreateShaderIDBuffer()
 	auto& oMissShaderSet = g_D3DShaderManager.GetRTShaderSet(D3D_RT_SHADER_TYPE::MISS);
 	auto& oHitShaderSet = g_D3DShaderManager.GetRTShaderSet(D3D_RT_SHADER_TYPE::HIT);
 
-	const UINT c_uiShaderCount = 2 + oMissShaderSet.size();
+	const UINT c_uiShaderCount = g_D3DShaderManager.GetRTShadersCount();
 
 	char* apShaderIDData = (char*)malloc(D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT * c_uiShaderCount);
 	assert(apShaderIDData != nullptr);
@@ -172,47 +176,36 @@ void D3DRayTracingScene::CreateShaderIDBuffer()
 		assert(0);
 	}
 
-	// 1. Ray Generation shader
+	// 1. Ray Generation shader, only 32 btis but the next Miss Shaders will need to start 64 bit away from the buffer start
 	void* pShaderID = oRTPSOProperties->GetShaderIdentifier(L"default_raygen");
 	memcpy(apShaderIDData, pShaderID, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
 
-	// 2. Miss shader
+	// 2. Miss shader, only two for now, so 64 bit aligned, 128 bits for the Hit shaders
 	for (const auto& roMissShader : oMissShaderSet)
 	{
 		std::wstring szWideShaderIdentifier(roMissShader.second->m_szShaderIdentifier.begin(), roMissShader.second->m_szShaderIdentifier.end());
 		pShaderID = oRTPSOProperties->GetShaderIdentifier(szWideShaderIdentifier.c_str());
 
 		const D3DMissShader* pMissShader = (D3DMissShader*)roMissShader.second;
-		memcpy(apShaderIDData + (1 + pMissShader->m_uiShaderTableIndex) * D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT, pShaderID, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+		memcpy(apShaderIDData + 1 * D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT + pMissShader->m_uiShaderTableIndex * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES, pShaderID, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
 	}
 
-	// 2. Hit shader
-	//for (const auto& roHitShader : oHitShaderSet)
-	//{
-		/*
+	// 3. Hit shader
+	for (const auto& roHitShader : oHitShaderSet)
+	{
 		std::wstring szWideShaderIdentifier(roHitShader.second->m_szShaderIdentifier.begin(), roHitShader.second->m_szShaderIdentifier.end());
+		szWideShaderIdentifier += L"group";
 		pShaderID = oRTPSOProperties->GetShaderIdentifier(szWideShaderIdentifier.c_str());
 
 		const D3DHitShader* pHitShader = (D3DHitShader*)roHitShader.second;
-		memcpy(apShaderIDData + (1 + oMissShaderSet.size() + pHitShader->m_uiShaderTableIndex) * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES, &pShaderID, sizeof(void*));
-		*/
-
-		pShaderID = oRTPSOProperties->GetShaderIdentifier(L"HitGroup2");
-		memcpy(apShaderIDData + (1 + oMissShaderSet.size()) * D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT, pShaderID, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-	//}
-
-
-	//apShaderIDData[0] = pShaderID;
-
-	//std::wstring szWideShaderIdentifier(m_pHitShader->m_szShaderIdentifier.begin(), m_pHitShader->m_szShaderIdentifier.end());
-
+		//memcpy(apShaderIDData + (1 + oMissShaderSet.size() + pHitShader->m_uiShaderTableIndex) * D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT, pShaderID, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+		memcpy(apShaderIDData + 2 * D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT + pHitShader->m_uiShaderTableIndex * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES , pShaderID, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+	}
 
 	m_oSceneShaderIDBuffer.WriteData(apShaderIDData, D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT * c_uiShaderCount);
 
 	oRTPSOProperties->Release();
 	free(apShaderIDData);
-
-	// TODO : The reste once we have the RT PSO
 }
 
 void D3DRayTracingScene::ReleaseBVH()
@@ -311,20 +304,26 @@ void D3DRayTracingScene::CreateGlobalRayTracingPSO(ID3D12Device5* a_pDevice)
 	auto& oMissShaderSet = g_D3DShaderManager.GetRTShaderSet(D3D_RT_SHADER_TYPE::MISS);
 	auto& oHitShaderSet = g_D3DShaderManager.GetRTShaderSet(D3D_RT_SHADER_TYPE::HIT);
 
-	// 1 for Ray Gen shader
-	// n for Miss shaders
+	// 1 for Ray Gen Shader
+	// n for Miss Shaders
 	// n for Hit Shaders
-	// 1 for Hit Group
+	// n for Hit Group (for each Hit Shader)
 	// 1 for Shader Config
 	// 1 for Root Signature
 	// 1 for RT Pipeline Config
-	const UINT c_uiSubobjectCount = 5 + oHitShaderSet.size() + oMissShaderSet.size();
+	const UINT c_uiSubobjectCount = 4 + oHitShaderSet.size() * 2 + oMissShaderSet.size();
 	UINT uiSubobjectCounter = 0;
 	D3D12_STATE_SUBOBJECT* aSubobject = new D3D12_STATE_SUBOBJECT[c_uiSubobjectCount];
 
 	std::vector<D3D12_DXIL_LIBRARY_DESC> vDXILLibs;
+	std::vector<D3D12_HIT_GROUP_DESC> vHitGroups;
+	std::vector<std::wstring> vHitShaderName;
+	std::vector<std::wstring> vHitGroupName;
 	vDXILLibs.reserve(c_uiSubobjectCount);
-	UINT uiDXILLibsCounter = 0;
+	vHitGroups.reserve(c_uiSubobjectCount);
+	vHitShaderName.reserve(c_uiSubobjectCount);
+	vHitGroupName.reserve(c_uiSubobjectCount);
+	UINT uiObjectListCounter = 0;
 
 	// 1. Ray Generation Shader, there's always only one (for now ?)
 	D3DRayGenerationShader* oSceneRGShader = (D3DRayGenerationShader*)oRGShaderSet["default"];
@@ -358,17 +357,24 @@ void D3DRayTracingScene::CreateGlobalRayTracingPSO(ID3D12Device5* a_pDevice)
 
 		D3D12_STATE_SUBOBJECT oMissLibSubobject = {};
 		oMissLibSubobject.Type = D3D12_STATE_SUBOBJECT_TYPE_DXIL_LIBRARY;
-		oMissLibSubobject.pDesc = &oMissDXILLib;
-		//oMissLibSubobject.pDesc = &vDXILLibs[uiDXILLibsCounter];
+		//oMissLibSubobject.pDesc = &oMissDXILLib;
+		oMissLibSubobject.pDesc = &vDXILLibs[uiObjectListCounter];
 
 		aSubobject[uiSubobjectCounter] = oMissLibSubobject;
 		uiSubobjectCounter++;
-		uiDXILLibsCounter++;
+		uiObjectListCounter++;
 	}
 
-	// 3. Hit Shaders
+	// 3. Hit Shaders + Hit Group
 	for (const auto& roHitShader : oHitShaderSet)
 	{
+		std::wstring szHitShaderName(roHitShader.second->m_szShaderIdentifier.begin(), roHitShader.second->m_szShaderIdentifier.end());
+		std::wstring szHitGroupName(roHitShader.second->m_szShaderIdentifier.begin(), roHitShader.second->m_szShaderIdentifier.end());
+		szHitGroupName += L"group";
+
+		vHitShaderName.emplace_back(szHitShaderName);
+		vHitGroupName.emplace_back(szHitGroupName);
+		
 		D3D12_SHADER_BYTECODE oHitByteCode;
 		oHitByteCode.pShaderBytecode = roHitShader.second->m_pByteCode;
 		oHitByteCode.BytecodeLength = roHitShader.second->m_uiByteCodeSize;
@@ -380,24 +386,27 @@ void D3DRayTracingScene::CreateGlobalRayTracingPSO(ID3D12Device5* a_pDevice)
 
 		D3D12_STATE_SUBOBJECT oHitLibSubobject = {};
 		oHitLibSubobject.Type = D3D12_STATE_SUBOBJECT_TYPE_DXIL_LIBRARY;
-		oHitLibSubobject.pDesc = &oHitDXILLib;
-		//oHitLibSubobject.pDesc = &vDXILLibs[uiDXILLibsCounter];
+		oHitLibSubobject.pDesc = &vDXILLibs[uiObjectListCounter];
 
 		aSubobject[uiSubobjectCounter] = oHitLibSubobject;
 		uiSubobjectCounter++;
-		uiDXILLibsCounter++;
-	}
 
-	// 4. Hit Group
-	D3D12_HIT_GROUP_DESC oHitGroup = {};
-	oHitGroup.Type = D3D12_HIT_GROUP_TYPE_TRIANGLES;
-	oHitGroup.HitGroupExport = L"HitGroup2";
-	oHitGroup.ClosestHitShaderImport = L"basicsolidrt_hit"; // Not needed ?
-	D3D12_STATE_SUBOBJECT oHitGroupSubobject = {};
-	oHitGroupSubobject.Type = D3D12_STATE_SUBOBJECT_TYPE_HIT_GROUP;
-	oHitGroupSubobject.pDesc = &oHitGroup;
-	aSubobject[uiSubobjectCounter] = oHitGroupSubobject;
-	uiSubobjectCounter++;
+		// 4. Hit Group
+		D3D12_HIT_GROUP_DESC oHitGroup = {};
+		oHitGroup.Type = D3D12_HIT_GROUP_TYPE_TRIANGLES;
+		oHitGroup.HitGroupExport = vHitGroupName[uiObjectListCounter - 1].c_str();
+		oHitGroup.ClosestHitShaderImport = vHitShaderName[uiObjectListCounter - 1].c_str(); // Not needed ?
+		vHitGroups.emplace_back(oHitGroup);
+
+		D3D12_STATE_SUBOBJECT oHitGroupSubobject = {};
+		oHitGroupSubobject.Type = D3D12_STATE_SUBOBJECT_TYPE_HIT_GROUP;
+		oHitGroupSubobject.pDesc = &vHitGroups[uiObjectListCounter - 1];
+
+		aSubobject[uiSubobjectCounter] = oHitGroupSubobject;
+		uiSubobjectCounter++;
+
+		uiObjectListCounter++;
+	}
 
 	// 5. Shader config
 	// This is the payload size, struct shared through shaders
@@ -430,12 +439,12 @@ void D3DRayTracingScene::CreateGlobalRayTracingPSO(ID3D12Device5* a_pDevice)
 	aSubobject[uiSubobjectCounter] = oRTPipelineSubobject;
 	uiSubobjectCounter++;
 
-	D3D12_STATE_OBJECT_DESC oRayTracingPS0Desc = {};
-	oRayTracingPS0Desc.Type = D3D12_STATE_OBJECT_TYPE_RAYTRACING_PIPELINE;
-	oRayTracingPS0Desc.pSubobjects = aSubobject;
-	oRayTracingPS0Desc.NumSubobjects = c_uiSubobjectCount;
+	D3D12_STATE_OBJECT_DESC oRayTracingPSODesc = {};
+	oRayTracingPSODesc.Type = D3D12_STATE_OBJECT_TYPE_RAYTRACING_PIPELINE;
+	oRayTracingPSODesc.pSubobjects = aSubobject;
+	oRayTracingPSODesc.NumSubobjects = c_uiSubobjectCount;
 
-	if (!SUCCEEDED(a_pDevice->CreateStateObject(&oRayTracingPS0Desc, IID_PPV_ARGS(&m_pRayTracingPSO))))
+	if (!SUCCEEDED(a_pDevice->CreateStateObject(&oRayTracingPSODesc, IID_PPV_ARGS(&m_pRayTracingPSO))))
 	{
 		OutputDebugStringA("Error : Create Ray Tracing Root signature\n");
 		assert(0);
