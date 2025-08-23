@@ -12,9 +12,9 @@ enum D3D_RT_SHADER_TYPE
 class D3DRTShader
 {
 public:
-	char* m_pByteCode;
-	UINT64 m_uiByteCodeSize;
-	std::string m_szShaderIdentifier;
+	char* m_pByteCode = nullptr;
+	UINT64 m_uiByteCodeSize = 0;
+	std::string m_szShaderIdentifier = "";
 };
 
 class D3DRayGenerationShader : public D3DRTShader

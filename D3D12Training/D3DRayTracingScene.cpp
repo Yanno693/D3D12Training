@@ -102,7 +102,7 @@ void D3DRayTracingScene::CreateBVH(ID3D12GraphicsCommandList4* a_pCommandList)
 	if (!D3DDevice::isRayTracingEnabled())
 		return;
 
-	g_D3DBufferManager.InitializeGenericBuffer(&m_oInstanceUpdateBuffer, sizeof(D3D12_RAYTRACING_INSTANCE_DESC) * m_apCurrentSceneMesh.size());
+	g_D3DBufferManager.InitializeGenericBuffer(&m_oInstanceUpdateBuffer, (UINT)(sizeof(D3D12_RAYTRACING_INSTANCE_DESC) * m_apCurrentSceneMesh.size()));
 	m_oInstanceUpdateBuffer.SetDebugName(L"RT Scene Instance Buffer Update");
 
 	CreateGlobalRayTracingPSO(D3DDevice::s_Device.Get());
@@ -128,22 +128,22 @@ void D3DRayTracingScene::CreateBVH(ID3D12GraphicsCommandList4* a_pCommandList)
 
 		DirectX::XMStoreFloat3x4((DirectX::XMFLOAT3X4*)&pInstancesData[i].Transform, oTransform);
 	}
-	m_oInstanceUpdateBuffer.WriteData(pInstancesData, sizeof(D3D12_RAYTRACING_INSTANCE_DESC) * m_apCurrentSceneMesh.size());
+	m_oInstanceUpdateBuffer.WriteData(pInstancesData, (UINT)(sizeof(D3D12_RAYTRACING_INSTANCE_DESC) * m_apCurrentSceneMesh.size()));
 	free(pInstancesData);
 
 	D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS oBVHInput = {};
 	oBVHInput.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL;
 	oBVHInput.Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_BUILD;
-	oBVHInput.NumDescs = m_apCurrentSceneMesh.size();
+	oBVHInput.NumDescs = (UINT)m_apCurrentSceneMesh.size();
 	oBVHInput.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
 	oBVHInput.InstanceDescs = m_oInstanceUpdateBuffer.m_pResource.Get()->GetGPUVirtualAddress();
 
 	D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO oBVHPreBuildInfo = {};
 	m_pDevice->GetRaytracingAccelerationStructurePrebuildInfo(&oBVHInput, &oBVHPreBuildInfo);
 
-	g_D3DBufferManager.InitializeGenericBuffer(&m_oBVH, oBVHPreBuildInfo.ResultDataMaxSizeInBytes, true, D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE);
+	g_D3DBufferManager.InitializeGenericBuffer(&m_oBVH, (UINT)oBVHPreBuildInfo.ResultDataMaxSizeInBytes, true, D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE);
 	m_oBVH.SetDebugName(L"Scene BVH Buffer");
-	g_D3DBufferManager.InitializeGenericBuffer(&m_oBVHScratch, oBVHPreBuildInfo.ScratchDataSizeInBytes, true);
+	g_D3DBufferManager.InitializeGenericBuffer(&m_oBVHScratch, (UINT)oBVHPreBuildInfo.ScratchDataSizeInBytes, true);
 	m_oBVHScratch.SetDebugName(L"Scene BVH Scratch Buffer");
 	m_oBVHScratch.TransitionState(a_pCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
@@ -315,10 +315,11 @@ void D3DRayTracingScene::CreateGlobalRayTracingPSO(ID3D12Device5* a_pDevice)
 	// 1 for Shader Config
 	// 1 for Root Signature
 	// 1 for RT Pipeline Config
-	const UINT c_uiSubobjectCount = 4 + oHitShaderSet.size() * 2 + oMissShaderSet.size();
+	const UINT c_uiSubobjectCount = 4 + (UINT)(oHitShaderSet.size()) * 2 + (UINT)(oMissShaderSet.size());
 	UINT uiSubobjectCounter = 0;
 	D3D12_STATE_SUBOBJECT* aSubobject = new D3D12_STATE_SUBOBJECT[c_uiSubobjectCount];
 
+	// These lists are here to avoid losing data in loop scopes
 	std::vector<D3D12_DXIL_LIBRARY_DESC> vDXILLibs;
 	std::vector<D3D12_HIT_GROUP_DESC> vHitGroups;
 	std::vector<std::wstring> vHitShaderName;

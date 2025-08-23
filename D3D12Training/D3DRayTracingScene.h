@@ -12,7 +12,7 @@ class D3DRayTracingScene
 private:
 	std::vector<D3DMesh*> m_apCurrentSceneMesh; // Binded mesh for render
 	ID3D12Device5* m_pDevice = nullptr;
-	bool m_bInitialized;
+	bool m_bInitialized = false;
 	D3DTexture* m_pRenderTarget = nullptr; // To refactor i guess, a UAV to draw
  
 	D3D12_CPU_DESCRIPTOR_HANDLE m_uiBVH_CPUHandle = {};
