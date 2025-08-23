@@ -30,6 +30,7 @@ private:
 
 	D3DRayGenerationShader* m_oSceneRGShader = nullptr;
 	D3DMissShader* m_oSceneMissShader = nullptr;
+	D3DMissShader* m_oSceneMissShader2 = nullptr;
 
 	void CreateBVH(ID3D12GraphicsCommandList4* a_pCommandList);
 	void CreateShaderIDBuffer(); // Create the Shader ID Buffer for the frame, the buffer is released in ReleaseBVH()

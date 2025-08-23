@@ -22,6 +22,7 @@ void D3DRayTracingScene::LoadSceneDefaultShaders()
 {
 	m_oSceneRGShader = static_cast<D3DRayGenerationShader*>(g_D3DShaderManager.RequestRTShaderV2("default", RAYGEN));
 	m_oSceneMissShader = static_cast<D3DMissShader*>(g_D3DShaderManager.RequestRTShaderV2("default", MISS));
+	m_oSceneMissShader2 = static_cast<D3DMissShader*>(g_D3DShaderManager.RequestRTShaderV2("default2", MISS));
 }
 
 void D3DRayTracingScene::setRenderTarget(D3DTexture* a_pTexture)
@@ -81,11 +82,13 @@ void D3DRayTracingScene::DrawScene(ID3D12GraphicsCommandList4* a_pCommandList)
 
 	oRayDispatch.MissShaderTable.SizeInBytes = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES * g_D3DShaderManager.GetRTShaderSet(D3D_RT_SHADER_TYPE::MISS).size();
 	oRayDispatch.MissShaderTable.StartAddress = m_oSceneShaderIDBuffer.m_pResource.Get()->GetGPUVirtualAddress() + 1 * D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT;
+	oRayDispatch.MissShaderTable.StrideInBytes = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
 	//oRayDispatch.MissShaderTable.StartAddress = m_oSceneShaderIDBuffer.m_pResource.Get()->GetGPUVirtualAddress() + 1 * D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT;
 
 	oRayDispatch.HitGroupTable.SizeInBytes = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES * g_D3DShaderManager.GetRTShaderSet(D3D_RT_SHADER_TYPE::HIT).size();
 //	oRayDispatch.HitGroupTable.StartAddress = m_oSceneShaderIDBuffer.m_pResource.Get()->GetGPUVirtualAddress() + (1 + g_D3DShaderManager.GetRTShaderSet(D3D_RT_SHADER_TYPE::MISS).size()) * D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT;
 	oRayDispatch.HitGroupTable.StartAddress = m_oSceneShaderIDBuffer.m_pResource.Get()->GetGPUVirtualAddress() + 2 * D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT;
+	oRayDispatch.HitGroupTable.StrideInBytes = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
 	
 	oRayDispatch.Width = m_pRenderTarget->GetWidth();
 	oRayDispatch.Height = m_pRenderTarget->GetHeight();
@@ -255,12 +258,12 @@ void D3DRayTracingScene::CreateGlobalRayTracingRootSignature(ID3D12Device5* a_pD
 	oBVHRootParameter.Descriptor.RegisterSpace = 0;
 	oBVHRootParameter.Descriptor.ShaderRegister = 0;
 
-	D3D12_ROOT_PARAMETER oSceneParameter = {};
-	oSceneParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-	oSceneParameter.Descriptor.RegisterSpace = 0;
-	oSceneParameter.Descriptor.ShaderRegister = 0;
+	D3D12_ROOT_PARAMETER oSceneConstantsParameter = {};
+	oSceneConstantsParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+	oSceneConstantsParameter.Descriptor.RegisterSpace = 0;
+	oSceneConstantsParameter.Descriptor.ShaderRegister = 0;
 
-	D3D12_ROOT_PARAMETER pRayTracingRootParameters[] = { oUAVRootParameter, oBVHRootParameter, oSceneParameter };
+	D3D12_ROOT_PARAMETER pRayTracingRootParameters[] = { oUAVRootParameter, oBVHRootParameter, oSceneConstantsParameter };
 
 	Microsoft::WRL::ComPtr<ID3DBlob> rsBlob = nullptr;
 	Microsoft::WRL::ComPtr<ID3DBlob> errorBlob = nullptr;
@@ -275,7 +278,7 @@ void D3DRayTracingScene::CreateGlobalRayTracingRootSignature(ID3D12Device5* a_pD
 	D3D12SerializeRootSignature(&rsDesc, D3D_ROOT_SIGNATURE_VERSION_1, &rsBlob, &errorBlob);
 	if (errorBlob != nullptr)
 	{
-		void* d = errorBlob->GetBufferPointer();
+		void* d = errorBlob->GetBufferPointer(); // TODO : Display error message
 		int a = 1;
 		assert(0);
 	}
@@ -285,6 +288,7 @@ void D3DRayTracingScene::CreateGlobalRayTracingRootSignature(ID3D12Device5* a_pD
 		OutputDebugStringA("Error : Create Root signature\n");
 		assert(0);
 	}
+	m_pRayTracingRootSignature.Get()->SetName(L"Scene RT Root Signature");
 }
 
 void D3DRayTracingScene::CreateGlobalRayTracingPSO(ID3D12Device5* a_pDevice)
@@ -394,13 +398,13 @@ void D3DRayTracingScene::CreateGlobalRayTracingPSO(ID3D12Device5* a_pDevice)
 		// 4. Hit Group
 		D3D12_HIT_GROUP_DESC oHitGroup = {};
 		oHitGroup.Type = D3D12_HIT_GROUP_TYPE_TRIANGLES;
-		oHitGroup.HitGroupExport = vHitGroupName[uiObjectListCounter - 1].c_str();
-		oHitGroup.ClosestHitShaderImport = vHitShaderName[uiObjectListCounter - 1].c_str(); // Not needed ?
+		oHitGroup.HitGroupExport = vHitGroupName[uiObjectListCounter - oMissShaderSet.size()].c_str();
+		oHitGroup.ClosestHitShaderImport = vHitShaderName[uiObjectListCounter - oMissShaderSet.size()].c_str(); // Not needed ?
 		vHitGroups.emplace_back(oHitGroup);
 
 		D3D12_STATE_SUBOBJECT oHitGroupSubobject = {};
 		oHitGroupSubobject.Type = D3D12_STATE_SUBOBJECT_TYPE_HIT_GROUP;
-		oHitGroupSubobject.pDesc = &vHitGroups[uiObjectListCounter - 1];
+		oHitGroupSubobject.pDesc = &vHitGroups[uiObjectListCounter - oMissShaderSet.size()];
 
 		aSubobject[uiSubobjectCounter] = oHitGroupSubobject;
 		uiSubobjectCounter++;
@@ -449,6 +453,7 @@ void D3DRayTracingScene::CreateGlobalRayTracingPSO(ID3D12Device5* a_pDevice)
 		OutputDebugStringA("Error : Create Ray Tracing Root signature\n");
 		assert(0);
 	}
+	m_pRayTracingPSO.Get()->SetName(L"Scene RT PSO");
 
 	delete[] aSubobject;
 

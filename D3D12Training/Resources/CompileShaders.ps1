@@ -27,8 +27,8 @@ function compileShaderRT($shader)
 
 function compileShaderRayGenRT($shader)
 {
-    $shader_src   = ".\Shaders\" + $shader + "_rg.hlsl"
-    $shader_cso     = ".\Shaders\" + $shader + "_rg.cso"
+    $shader_src = ".\Shaders\" + $shader + "_rg.hlsl"
+    $shader_cso = ".\Shaders\" + $shader + "_rg.cso"
     
     Write-Output "Compiling Ray Generation RT $shader ..."
     ./dxc.exe -Od -Zi -Qembed_debug -E mainRayGen -T lib_6_3 -Fo $shader_cso $shader_src
@@ -52,3 +52,4 @@ compileShaderRT("basicsolidrt")
 compileShaderRT("basicsolidrt2")
 compileShaderRayGenRT("default")
 compileShaderMissRT("default")
+compileShaderMissRT("default2")
