@@ -77,18 +77,16 @@ void D3DRayTracingScene::DrawScene(ID3D12GraphicsCommandList4* a_pCommandList)
 	a_pCommandList->SetComputeRootConstantBufferView(2, g_SceneConstantBuffer.m_pResource.Get()->GetGPUVirtualAddress());
 
 	D3D12_DISPATCH_RAYS_DESC oRayDispatch = {};
-	oRayDispatch.RayGenerationShaderRecord.SizeInBytes = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
+	oRayDispatch.RayGenerationShaderRecord.SizeInBytes = D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT;
 	oRayDispatch.RayGenerationShaderRecord.StartAddress = m_oSceneShaderIDBuffer.m_pResource.Get()->GetGPUVirtualAddress();
 
-	oRayDispatch.MissShaderTable.SizeInBytes = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES * g_D3DShaderManager.GetRTShaderSet(D3D_RT_SHADER_TYPE::MISS).size();
+	oRayDispatch.MissShaderTable.SizeInBytes = D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT * g_D3DShaderManager.GetRTShaderSet(D3D_RT_SHADER_TYPE::MISS).size();
 	oRayDispatch.MissShaderTable.StartAddress = m_oSceneShaderIDBuffer.m_pResource.Get()->GetGPUVirtualAddress() + 1 * D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT;
-	oRayDispatch.MissShaderTable.StrideInBytes = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
-	//oRayDispatch.MissShaderTable.StartAddress = m_oSceneShaderIDBuffer.m_pResource.Get()->GetGPUVirtualAddress() + 1 * D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT;
-
-	oRayDispatch.HitGroupTable.SizeInBytes = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES * g_D3DShaderManager.GetRTShaderSet(D3D_RT_SHADER_TYPE::HIT).size();
-//	oRayDispatch.HitGroupTable.StartAddress = m_oSceneShaderIDBuffer.m_pResource.Get()->GetGPUVirtualAddress() + (1 + g_D3DShaderManager.GetRTShaderSet(D3D_RT_SHADER_TYPE::MISS).size()) * D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT;
-	oRayDispatch.HitGroupTable.StartAddress = m_oSceneShaderIDBuffer.m_pResource.Get()->GetGPUVirtualAddress() + 2 * D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT;
-	oRayDispatch.HitGroupTable.StrideInBytes = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
+	oRayDispatch.MissShaderTable.StrideInBytes = D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT;
+	
+	oRayDispatch.HitGroupTable.SizeInBytes = D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT * g_D3DShaderManager.GetRTShaderSet(D3D_RT_SHADER_TYPE::HIT).size();
+	oRayDispatch.HitGroupTable.StartAddress = m_oSceneShaderIDBuffer.m_pResource.Get()->GetGPUVirtualAddress() + (1 + g_D3DShaderManager.GetRTShaderSet(D3D_RT_SHADER_TYPE::MISS).size()) * D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT;
+	oRayDispatch.HitGroupTable.StrideInBytes = D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT;
 	
 	oRayDispatch.Width = m_pRenderTarget->GetWidth();
 	oRayDispatch.Height = m_pRenderTarget->GetHeight();
@@ -190,7 +188,7 @@ void D3DRayTracingScene::CreateShaderIDBuffer()
 		pShaderID = oRTPSOProperties->GetShaderIdentifier(szWideShaderIdentifier.c_str());
 
 		const D3DMissShader* pMissShader = (D3DMissShader*)roMissShader.second;
-		memcpy(apShaderIDData + 1 * D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT + pMissShader->m_uiShaderTableIndex * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES, pShaderID, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+		memcpy(apShaderIDData + (1 + pMissShader->m_uiShaderTableIndex) * D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT, pShaderID, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
 	}
 
 	// 3. Hit shader
@@ -201,8 +199,7 @@ void D3DRayTracingScene::CreateShaderIDBuffer()
 		pShaderID = oRTPSOProperties->GetShaderIdentifier(szWideShaderIdentifier.c_str());
 
 		const D3DHitShader* pHitShader = (D3DHitShader*)roHitShader.second;
-		//memcpy(apShaderIDData + (1 + oMissShaderSet.size() + pHitShader->m_uiShaderTableIndex) * D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT, pShaderID, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-		memcpy(apShaderIDData + 2 * D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT + pHitShader->m_uiShaderTableIndex * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES , pShaderID, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+		memcpy(apShaderIDData + (1 + oMissShaderSet.size() + pHitShader->m_uiShaderTableIndex) * D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT, pShaderID, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
 	}
 
 	m_oSceneShaderIDBuffer.WriteData(apShaderIDData, D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT * c_uiShaderCount);
