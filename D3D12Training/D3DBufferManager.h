@@ -10,9 +10,9 @@
 class D3DBufferManager
 {
 private:
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_pDescriptorHeap; // Descriptor Heap for the manager
-	D3D12_CPU_DESCRIPTOR_HANDLE m_uiCurrentDecriptorOffset; // Current offet in heap memory
-	D3D12_GPU_DESCRIPTOR_HANDLE m_uiCurrentGPUDecriptorOffset; // Current GPU offet in heap memory (with the heap in Shader Visible)
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_pDescriptorHeap = nullptr; // Descriptor Heap for the manager
+	D3D12_CPU_DESCRIPTOR_HANDLE m_uiCurrentDecriptorOffset = {}; // Current offet in heap memory
+	D3D12_GPU_DESCRIPTOR_HANDLE m_uiCurrentGPUDecriptorOffset = {}; // Current GPU offet in heap memory (with the heap in Shader Visible)
 	UINT m_uiSRVSizeInHeap = 0; // Size of one RTV in heap memory, used for updating the offset
 
 	ID3D12Device* m_pDevice = nullptr; // A pointer tho the device once initialized;

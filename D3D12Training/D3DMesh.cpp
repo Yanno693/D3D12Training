@@ -40,9 +40,7 @@ void D3DMesh::ParseObject(std::string a_sPath)
 	{
 		XMLElement* pXMLRTShader = pXMLRoot->FirstChildElement("rtshader");
 		assert(pXMLRTShader != nullptr);
-		m_pRayGenShader = (D3DRayGenerationShader*)g_D3DShaderManager.RequestRTShaderV2("default", D3D_RT_SHADER_TYPE::RAYGEN); // TODO : Delete, should not be here
 		m_pHitShader = (D3DHitShader*)g_D3DShaderManager.RequestRTShaderV2(pXMLRTShader->GetText(), D3D_RT_SHADER_TYPE::HIT);
-		m_pMissShader = (D3DMissShader*)g_D3DShaderManager.RequestRTShaderV2("default", D3D_RT_SHADER_TYPE::MISS); // TODO : Delete this too
 	}
 
 	XMLElement* pXMLTransform = pXMLRoot->FirstChildElement("transform");
@@ -352,7 +350,7 @@ void D3DMesh::ParseModelGLTF(std::string const a_sPath, std::string const a_sPat
 	assert(m_oMeshIndicesData.ptr != nullptr);
 	memcpy(m_oMeshIndicesData.ptr, oGLTFBinData + oGLTFIndicesDataInBuffer, oGLTFIndicesLengthInBuffer);
 	m_oMeshIndicesData.size = oGLTFIndicesLengthInBuffer;
-	m_oMeshIndicesData.stride = GetGLTFTypeSize(oGLTFIndicesType);
+	m_oMeshIndicesData.stride = (UINT)GetGLTFTypeSize(oGLTFIndicesType);
 	m_oMeshIndicesData.count = oGLTFIndicesCount;
 
 	m_uiIndicesCount = oGLTFIndicesCount;
@@ -421,9 +419,9 @@ void D3DMesh::CreateRTGPUBuffers(ID3D12Device5* a_pDevice)
 	D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO oBVHPreBuildInfo;
 	a_pDevice->GetRaytracingAccelerationStructurePrebuildInfo(&m_oBVHInput, &oBVHPreBuildInfo);
 
-	g_D3DBufferManager.InitializeGenericBuffer(&m_oBVH, oBVHPreBuildInfo.ResultDataMaxSizeInBytes, true, D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE);
+	g_D3DBufferManager.InitializeGenericBuffer(&m_oBVH, (UINT)oBVHPreBuildInfo.ResultDataMaxSizeInBytes, true, D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE);
 	m_oBVH.SetDebugName(L"BVH Buffer");
-	g_D3DBufferManager.InitializeGenericBuffer(&m_oBVHScratch, oBVHPreBuildInfo.ScratchDataSizeInBytes, true);
+	g_D3DBufferManager.InitializeGenericBuffer(&m_oBVHScratch, (UINT)oBVHPreBuildInfo.ScratchDataSizeInBytes, true);
 	m_oBVHScratch.SetDebugName(L"BVH Scratch Buffer");
 }
 
@@ -433,10 +431,7 @@ void D3DMesh::InitializeDebug(ID3D12Device5* a_pDevice, bool a_bUsesRayTracing)
 	if (a_bUsesRayTracing)
 	{
 		// 1. Load Shader
-		m_pRayGenShader = (D3DRayGenerationShader*)g_D3DShaderManager.RequestRTShaderV2("default", D3D_RT_SHADER_TYPE::RAYGEN);
 		m_pHitShader = (D3DHitShader*)g_D3DShaderManager.RequestRTShaderV2("basicsolidrt", D3D_RT_SHADER_TYPE::HIT);
-		m_pMissShader = (D3DMissShader*)g_D3DShaderManager.RequestRTShaderV2("default", D3D_RT_SHADER_TYPE::MISS);
-
 
 		// 2. Fill With something
 		_3DVertex vVertex[3] = {
@@ -479,9 +474,9 @@ void D3DMesh::InitializeDebug(ID3D12Device5* a_pDevice, bool a_bUsesRayTracing)
 		D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO oBVHPreBuildInfo;
 		a_pDevice->GetRaytracingAccelerationStructurePrebuildInfo(&m_oBVHInput,&oBVHPreBuildInfo);
 
-		g_D3DBufferManager.InitializeGenericBuffer(&m_oBVH, oBVHPreBuildInfo.ResultDataMaxSizeInBytes, true, D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE);
+		g_D3DBufferManager.InitializeGenericBuffer(&m_oBVH, (UINT)oBVHPreBuildInfo.ResultDataMaxSizeInBytes, true, D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE);
 		m_oBVH.SetDebugName(L"BVH Buffer");
-		g_D3DBufferManager.InitializeGenericBuffer(&m_oBVHScratch, oBVHPreBuildInfo.ScratchDataSizeInBytes, true);
+		g_D3DBufferManager.InitializeGenericBuffer(&m_oBVHScratch, (UINT)oBVHPreBuildInfo.ScratchDataSizeInBytes, true);
 		m_oBVHScratch.SetDebugName(L"BVH Scratch Buffer");
 
 	}

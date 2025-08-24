@@ -20,9 +20,18 @@ void D3DRayTracingScene::Initialize(ID3D12Device5* a_pDevice)
 
 void D3DRayTracingScene::LoadSceneDefaultShaders()
 {
+	// Should i keep these ?
+	/*
 	m_oSceneRGShader = static_cast<D3DRayGenerationShader*>(g_D3DShaderManager.RequestRTShaderV2("default", RAYGEN));
 	m_oSceneMissShader = static_cast<D3DMissShader*>(g_D3DShaderManager.RequestRTShaderV2("default", MISS));
 	m_oSceneMissShader2 = static_cast<D3DMissShader*>(g_D3DShaderManager.RequestRTShaderV2("default2", MISS));
+	*/
+
+	// Do NOT change the loading order
+	g_D3DShaderManager.RequestRTShaderV2("default", RAYGEN);
+	g_D3DShaderManager.RequestRTShaderV2("occlusion", MISS);
+	g_D3DShaderManager.RequestRTShaderV2("default", MISS);
+	g_D3DShaderManager.RequestRTShaderV2("occlusion", HIT);
 }
 
 void D3DRayTracingScene::setRenderTarget(D3DTexture* a_pTexture)
@@ -116,7 +125,7 @@ void D3DRayTracingScene::CreateBVH(ID3D12GraphicsCommandList4* a_pCommandList)
 		pInstancesData[i].InstanceMask = 0xFF;
 		pInstancesData[i].AccelerationStructure = m_apCurrentSceneMesh[i]->m_oBVH.m_pResource.Get()->GetGPUVirtualAddress();
 
-		pInstancesData[i].InstanceContributionToHitGroupIndex = i;
+		pInstancesData[i].InstanceContributionToHitGroupIndex = m_apCurrentSceneMesh[i]->m_pHitShader->m_uiShaderTableIndex;
 
 		GamePosition oMeshPosition = m_apCurrentSceneMesh[i]->GetPosition();
 		DirectX::XMMatrixTranslation(oMeshPosition.x, oMeshPosition.y, oMeshPosition.z);

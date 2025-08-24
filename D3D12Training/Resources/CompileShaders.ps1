@@ -53,3 +53,6 @@ compileShaderRT("basicsolidrt2")
 compileShaderRayGenRT("default")
 compileShaderMissRT("default")
 compileShaderMissRT("default2")
+
+compileShaderRT("occlusion")
+compileShaderMissRT("occlusion")
