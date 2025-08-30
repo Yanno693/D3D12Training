@@ -1,11 +1,11 @@
 <object>
-    <model>monkey</model>
+    <model>cube</model>
     <shader>basicsolid</shader>
-    <rtshader>basicsolidrt2</rtshader>
+    <rtshader>basicsolidrt</rtshader>
     <transform>
         <position>
             <x>0</x>
-            <y>0</y>
+            <y>-5</y>
             <z>0</z>
         </position>
         <rotation>
@@ -14,9 +14,9 @@
             <z>0</z>
         </rotation>
         <scale>
-            <x>1</x>
-            <y>1.5</y>
-            <z>1</z>
+            <x>20</x>
+            <y>1</y>
+            <z>20</z>
         </scale>
     </transform>
 </object>

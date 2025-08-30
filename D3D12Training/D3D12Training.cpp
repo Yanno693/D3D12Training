@@ -310,7 +310,7 @@ void initD3DSwapchain(UINT const a_uiWidth, UINT const a_uiHeight)
     DXGI_SWAP_CHAIN_DESC1 desc = {};
     desc.Width = a_uiWidth;
     desc.Height = a_uiHeight;
-    desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    desc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
     desc.SampleDesc.Count = 1; // No-Antialiasing because 1 sample, also not usable with FLIP_DISCARD ?
     desc.SampleDesc.Quality = 0;
     desc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
@@ -534,21 +534,24 @@ int main()
     g_SceneConstantBuffer.SetDebugName(L"Scene Constant Buffer");
     g_SceneData.oViewProjMatrix = DirectX::XMMatrixIdentity();
 
+    D3DMesh oGroundMesh;
     D3DMesh oMesh;
     D3DMesh oMesh2;
     //oMesh.Initialize("monkey", D3DDevice::s_device.Get());
+    oGroundMesh.Initialize("ground", D3DDevice::s_Device.Get(), true);
     oMesh.Initialize("monkey", D3DDevice::s_Device.Get(), true);
     oMesh2.Initialize("monkey2", D3DDevice::s_Device.Get(), true);
     //oMesh.InitializeDebug(D3DDevice::s_device.Get());
     //oMesh.InitializeDebug(D3DDevice::s_device.Get(), true);
 
+    D3DMesh::s_MeshList.push_back(oGroundMesh);
     D3DMesh::s_MeshList.push_back(oMesh);
     D3DMesh::s_MeshList.push_back(oMesh2);
 
 
     test_texture = new D3DTexture;
     test_rt = new D3DRenderTarget;
-    g_D3DBufferManager.InitializeTexture(test_texture, g_ScreenResolution.width, g_ScreenResolution.height, DXGI_FORMAT_R8G8B8A8_UNORM);
+    g_D3DBufferManager.InitializeTexture(test_texture, g_ScreenResolution.width, g_ScreenResolution.height, DXGI_FORMAT_R16G16B16A16_FLOAT);
     g_D3DRenderTargetManager.InitializeRenderTargetFromTexture(test_rt, test_texture);
     test_rt->SetDebugName(L"Test Texture");
 

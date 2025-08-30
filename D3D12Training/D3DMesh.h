@@ -74,6 +74,8 @@ public:
 
 	void SetPosition(const GamePosition& a_rPosition);
 	GamePosition GetPosition();
+	void SetScale(const GameScale& a_rScale);
+	GameScale GetScale();
 
 	bool m_bIsIndexed = false;
 

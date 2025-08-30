@@ -30,8 +30,8 @@ void default_raygen()
     ray.TMax = 1000;
 
     RTPayload payLoad;
-
-    TraceRay(scene, RAY_FLAG_NONE, 0xFF, 0, 1, DEFAULT_MISS_SHADER_ID, ray, payLoad);
-
+    
+    TraceRay(scene, RAY_FLAG_NONE, 0xFF, DIRECT_HIT_SHADER_OFFSET, 2, DEFAULT_MISS_SHADER_ID, ray, payLoad);
+    
     uav[out_idx] = payLoad.color;
 }

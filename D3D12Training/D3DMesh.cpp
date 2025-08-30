@@ -560,7 +560,7 @@ void D3DMesh::InitializeDebug(ID3D12Device5* a_pDevice, bool a_bUsesRayTracing)
 		oPsoDesc.NumRenderTargets = 1;
 		oPsoDesc.SampleDesc.Count = 1;
 		oPsoDesc.SampleMask = 0xFFFFFFFF;
-		oPsoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+		oPsoDesc.RTVFormats[0] = DXGI_FORMAT_R16G16B16A16_FLOAT;
 		oPsoDesc.BlendState.RenderTarget[0].BlendEnable = true;
 		oPsoDesc.BlendState.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
 		oPsoDesc.BlendState.RenderTarget[0].BlendOp = D3D12_BLEND_OP_ADD;
@@ -666,7 +666,7 @@ void D3DMesh::Initialize(std::string a_sPath, ID3D12Device5* a_pDevice, bool a_b
 	oPsoDesc.NumRenderTargets = 1;
 	oPsoDesc.SampleDesc.Count = 1;
 	oPsoDesc.SampleMask = 0xFFFFFFFF;
-	oPsoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+	oPsoDesc.RTVFormats[0] = DXGI_FORMAT_R16G16B16A16_FLOAT;
 	oPsoDesc.BlendState.RenderTarget[0].BlendEnable = true;
 	oPsoDesc.BlendState.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
 	oPsoDesc.BlendState.RenderTarget[0].BlendOp = D3D12_BLEND_OP_ADD;
@@ -770,4 +770,14 @@ void D3DMesh::SetPosition(const GamePosition& a_rPosition)
 GamePosition D3DMesh::GetPosition()
 {
 	return m_oTransform.position;
+}
+
+void D3DMesh::SetScale(const GameScale& a_rScale)
+{
+	m_oTransform.scale = a_rScale;
+}
+
+GameScale D3DMesh::GetScale()
+{
+	return m_oTransform.scale;
 }

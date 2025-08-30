@@ -72,6 +72,7 @@ public:
 * 1 : Skybox
 * 
 * Hit table Shaders :
-* 0 : AO Hit // TODO : Make AO Shaders
-* + : Model Shaders
+* For Each Mesh :
+*	0 : Mesh Albedo Shader
+*	1 : AO Hit Shader
 */
