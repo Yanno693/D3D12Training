@@ -34,7 +34,12 @@ struct RTPayload
 
 struct OcclusionPayload
 {
-    int iHasTouched;
+    int iIsOccluded;
+};
+
+struct Vertex
+{
+    float3 position;
 };
 
 /*
@@ -53,21 +58,20 @@ float GetOcclusion()
 }
 */
 
-float GetHardShadowOcclusion(RaytracingAccelerationStructure a_scene)
+float GetHardShadowOcclusion(RaytracingAccelerationStructure a_scene, float3 surface_normal)
 {
     OcclusionPayload payLoad;
-    //RTPayload payLoad;
 
     RayDesc ray;
-    ray.Origin = WorldRayOrigin() + WorldRayDirection() * RayTCurrent();
+    ray.Origin = WorldRayOrigin() + WorldRayDirection() * RayTCurrent() - surface_normal * 0.05;
 
     ray.Direction = normalize(float3(1, 1, 1)); // TODO : Get normal of the triangle or something
     ray.TMin = 0.01;
     ray.TMax = 1000;
 
-    payLoad.iHasTouched = 0;
+    payLoad.iIsOccluded = 0;
 
-    TraceRay(a_scene, RAY_FLAG_NONE, 0xFF, OCCLUSION_HIT_SHADER_OFFSET, MESH_SHADER_GROUP_SIZE, DEFAULT_OCCLUSION_SHADER_ID, ray, payLoad);
+    TraceRay(a_scene, RAY_FLAG_CULL_BACK_FACING_TRIANGLES , 0xFF, OCCLUSION_HIT_SHADER_OFFSET, MESH_SHADER_GROUP_SIZE, DEFAULT_OCCLUSION_SHADER_ID, ray, payLoad);
 
-    return payLoad.iHasTouched;
+    return payLoad.iIsOccluded;
 }

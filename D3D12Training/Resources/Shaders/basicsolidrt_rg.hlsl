@@ -31,7 +31,7 @@ void mainRayGen()
 
     RTPayload payLoad;
 
-    TraceRay(scene, RAY_FLAG_NONE, 0xFF, 0, 0, 0, ray, payLoad);
+    TraceRay(scene, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0xFF, 0, 0, 0, ray, payLoad);
 
     //uav[idx] = float4(0, 0.5, 0.5, 1);
 

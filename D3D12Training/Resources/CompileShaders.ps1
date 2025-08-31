@@ -22,7 +22,7 @@ function compileShaderRT($shader)
     
 
     Write-Output "Compiling RT $shader ..."
-    ./dxc.exe -Od -Zi -Qembed_debug -E mainHit -T lib_6_3 -Fo $shader_ch_cso $shader_ch_src
+    ./dxc.exe -Od -Zi -enable-16bit-types -Qembed_debug -E mainHit -T lib_6_3 -Fo $shader_ch_cso $shader_ch_src
 }
 
 function compileShaderRayGenRT($shader)
@@ -31,7 +31,7 @@ function compileShaderRayGenRT($shader)
     $shader_cso = ".\Shaders\" + $shader + "_rg.cso"
     
     Write-Output "Compiling Ray Generation RT $shader ..."
-    ./dxc.exe -Od -Zi -Qembed_debug -E mainRayGen -T lib_6_3 -Fo $shader_cso $shader_src
+    ./dxc.exe -Od -Zi -enable-16bit-types -Qembed_debug -E mainRayGen -T lib_6_3 -Fo $shader_cso $shader_src
 }
 
 function compileShaderMissRT($shader)
@@ -40,7 +40,7 @@ function compileShaderMissRT($shader)
     $shader_cso     = ".\Shaders\" + $shader + "_miss.cso"
     
     Write-Output "Compiling Miss RT $shader ..."
-    ./dxc.exe -Od -Zi -Qembed_debug -E mainMiss -T lib_6_3 -Fo $shader_cso $shader_src
+    ./dxc.exe -Od -Zi -enable-16bit-types -Qembed_debug -E mainMiss -T lib_6_3 -Fo $shader_cso $shader_src
 }
 
 #./dxc.exe -Zi -Qembed_debug -E main -T vs_6_0 -Fo .\Shaders\test_vs.cso -Fre .\Shaders\test_refl.cso -Frs .\Shaders\test_rs.cso .\Shaders\test_vs.hlsl

@@ -6,5 +6,5 @@ RWTexture2D<float4> uav : register(u0);
 [shader("closesthit")]
 void occlusion_hit(inout OcclusionPayload payload, BuiltInTriangleIntersectionAttributes attribs)
 {
-    payload.iHasTouched = 1;
+    payload.iIsOccluded = 1;
 }

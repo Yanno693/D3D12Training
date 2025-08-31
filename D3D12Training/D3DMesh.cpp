@@ -393,10 +393,12 @@ void D3DMesh::CreateRTGPUBuffers(ID3D12Device5* a_pDevice)
 	m_oRTVertexBuffer.m_oData.SizeInBytes = m_oMeshPositionData.size;
 	m_oRTVertexBuffer.m_oData.StrideInBytes = m_oMeshPositionData.stride;
 	m_oRTVertexBuffer.WriteData(m_oMeshPositionData.ptr, m_oMeshPositionData.size);
+
 	g_D3DBufferManager.InitializeGenericBuffer(&m_oRTIndexBuffer.m_oBuffer, m_oMeshIndicesData.size);
 	m_oRTIndexBuffer.m_oData.SizeInBytes = m_oMeshIndicesData.size;
 	m_oRTIndexBuffer.m_oData.Format = (m_oMeshIndicesData.stride == sizeof(USHORT) ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT);
 	m_oRTIndexBuffer.WriteData(m_oMeshIndicesData.ptr, m_oMeshIndicesData.size);
+
 
 	// Create BVH
 	m_oBVHGeometry.Type = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
@@ -420,9 +422,7 @@ void D3DMesh::CreateRTGPUBuffers(ID3D12Device5* a_pDevice)
 	a_pDevice->GetRaytracingAccelerationStructurePrebuildInfo(&m_oBVHInput, &oBVHPreBuildInfo);
 
 	g_D3DBufferManager.InitializeGenericBuffer(&m_oBVH, (UINT)oBVHPreBuildInfo.ResultDataMaxSizeInBytes, true, D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE);
-	m_oBVH.SetDebugName(L"BVH Buffer");
 	g_D3DBufferManager.InitializeGenericBuffer(&m_oBVHScratch, (UINT)oBVHPreBuildInfo.ScratchDataSizeInBytes, true);
-	m_oBVHScratch.SetDebugName(L"BVH Scratch Buffer");
 }
 
 
@@ -610,9 +610,21 @@ void D3DMesh::Initialize(std::string a_sPath, ID3D12Device5* a_pDevice, bool a_b
 
 	// Set debug name
 	std::wstring ws(a_sPath.begin(), a_sPath.end());
-	std::wstringstream ss;
-	ss << ws << " Vertex Buffer";
-	m_oVertexBuffer.SetDebugName(ss.str().c_str());
+	std::wstringstream ssVertexBuffer;
+	ssVertexBuffer << ws << " Vertex Buffer";
+	std::wstringstream ssRTVertexBuffer;
+	ssRTVertexBuffer << ws << " RT Vertex Buffer";
+	std::wstringstream ssRTIndexBuffer;
+	ssRTIndexBuffer << ws << " RT Index Buffer";
+	std::wstringstream ssRTBVH;
+	ssRTBVH << ws << " BVH";
+	std::wstringstream ssRTBVHScratch;
+	ssRTBVHScratch << ws << " BVH Scratch";
+	m_oVertexBuffer.SetDebugName(ssVertexBuffer.str().c_str());
+	m_oRTVertexBuffer.SetDebugName(ssRTVertexBuffer.str().c_str());
+	m_oRTIndexBuffer.SetDebugName(ssRTIndexBuffer.str().c_str());
+	m_oBVH.SetDebugName(ssRTBVH.str().c_str());
+	m_oBVHScratch.SetDebugName(ssRTBVHScratch.str().c_str());
 
 	// Create PSO
 	D3D12_INPUT_LAYOUT_DESC oInputLayoutDesc = {};
@@ -691,12 +703,6 @@ void D3DMesh::Initialize(std::string a_sPath, ID3D12Device5* a_pDevice, bool a_b
 		sErrorSS << "Error : Pipeline state object compilation for object " << a_sPath << "\n";
 		OutputDebugStringA(sErrorSS.str().c_str());
 		assert(0);
-	}
-
-	// Create RT PSO
-	if (D3DDevice::isRayTracingEnabled())
-	{
-
 	}
 }
 

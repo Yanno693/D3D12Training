@@ -14,7 +14,7 @@ void D3DRayTracingScene::Initialize(ID3D12Device5* a_pDevice)
 		g_D3DBufferManager.RequestDescriptor(m_uiBVH_CPUHandle, m_uiBVH_GPUHandle);
 
 		LoadSceneDefaultShaders();
-		CreateGlobalRayTracingRootSignature(a_pDevice);
+		CreateRayTracingRootSignatures(a_pDevice);
 	}
 }
 
@@ -86,16 +86,16 @@ void D3DRayTracingScene::DrawScene(ID3D12GraphicsCommandList4* a_pCommandList)
 	a_pCommandList->SetComputeRootConstantBufferView(2, g_SceneConstantBuffer.m_pResource.Get()->GetGPUVirtualAddress());
 
 	D3D12_DISPATCH_RAYS_DESC oRayDispatch = {};
-	oRayDispatch.RayGenerationShaderRecord.SizeInBytes = D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT;
+	oRayDispatch.RayGenerationShaderRecord.SizeInBytes = 2 * D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT;
 	oRayDispatch.RayGenerationShaderRecord.StartAddress = m_oSceneShaderIDBuffer.m_pResource.Get()->GetGPUVirtualAddress();
 
-	oRayDispatch.MissShaderTable.SizeInBytes = D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT * g_D3DShaderManager.GetRTShaderSet(D3D_RT_SHADER_TYPE::MISS).size();
-	oRayDispatch.MissShaderTable.StartAddress = m_oSceneShaderIDBuffer.m_pResource.Get()->GetGPUVirtualAddress() + 1 * D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT;
-	oRayDispatch.MissShaderTable.StrideInBytes = D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT;
+	oRayDispatch.MissShaderTable.SizeInBytes = 2 * D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT * g_D3DShaderManager.GetRTShaderSet(D3D_RT_SHADER_TYPE::MISS).size();
+	oRayDispatch.MissShaderTable.StartAddress = m_oSceneShaderIDBuffer.m_pResource.Get()->GetGPUVirtualAddress() + 1 * D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT * 2;
+	oRayDispatch.MissShaderTable.StrideInBytes = D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT * 2;
 	
-	oRayDispatch.HitGroupTable.SizeInBytes = D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT * (2 * D3DMesh::s_MeshList.size());
-	oRayDispatch.HitGroupTable.StartAddress = m_oSceneShaderIDBuffer.m_pResource.Get()->GetGPUVirtualAddress() + (1 + g_D3DShaderManager.GetRTShaderSet(D3D_RT_SHADER_TYPE::MISS).size()) * D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT;
-	oRayDispatch.HitGroupTable.StrideInBytes = D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT;
+	oRayDispatch.HitGroupTable.SizeInBytes = 2 * D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT * (2 * D3DMesh::s_MeshList.size());
+	oRayDispatch.HitGroupTable.StartAddress = m_oSceneShaderIDBuffer.m_pResource.Get()->GetGPUVirtualAddress() + (1 + g_D3DShaderManager.GetRTShaderSet(D3D_RT_SHADER_TYPE::MISS).size()) * D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT * 2;
+	oRayDispatch.HitGroupTable.StrideInBytes = D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT * 2;
 	
 	oRayDispatch.Width = m_pRenderTarget->GetWidth();
 	oRayDispatch.Height = m_pRenderTarget->GetHeight();
@@ -174,7 +174,8 @@ void D3DRayTracingScene::CreateShaderIDBuffer()
 	auto& oMissShaderSet = g_D3DShaderManager.GetRTShaderSet(D3D_RT_SHADER_TYPE::MISS);
 	auto& oHitShaderSet = g_D3DShaderManager.GetRTShaderSet(D3D_RT_SHADER_TYPE::HIT);
 
-	UINT uiBufferSize = D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT * (oRGShaderSet.size() + oMissShaderSet.size() + D3DMesh::s_MeshList.size() * 2);
+	UINT uiBufferSize = D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT * (oRGShaderSet.size() + oMissShaderSet.size() + D3DMesh::s_MeshList.size() * 2) * 2;
+	// This * 2 at he end : I trible the size of the shader table to have 96 (really need 64) bits behind the shaders in the shader table, this will allow me to add a Local Root Signature Argument
 
 	g_D3DBufferManager.InitializeGenericBuffer(&m_oSceneShaderIDBuffer, uiBufferSize);
 	m_oSceneShaderIDBuffer.SetDebugName(L"RT Scene Shader ID Buffer"); // You'll need to create the RT PSO to fill the shader id buffer of the identifiers
@@ -192,18 +193,18 @@ void D3DRayTracingScene::CreateShaderIDBuffer()
 		assert(0);
 	}
 
-	// 1. Ray Generation shader, only 32 btis but the next Miss Shaders will need to start 64 bit away from the buffer start
+	// 1. Ray Generation shader
 	void* pShaderID = oRTPSOProperties->GetShaderIdentifier(L"default_raygen");
 	memcpy(apShaderIDData, pShaderID, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
 
-	// 2. Miss shader, only two for now, so 64 bit aligned, 128 bits for the Hit shaders
+	// 2. Miss shader
 	for (const auto& roMissShader : oMissShaderSet)
 	{
 		std::wstring szWideShaderIdentifier(roMissShader.second->m_szShaderIdentifier.begin(), roMissShader.second->m_szShaderIdentifier.end());
 		pShaderID = oRTPSOProperties->GetShaderIdentifier(szWideShaderIdentifier.c_str());
 
 		const D3DMissShader* pMissShader = (D3DMissShader*)roMissShader.second;
-		memcpy(apShaderIDData + (1 + pMissShader->m_uiShaderTableIndex) * D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT, pShaderID, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+		memcpy(apShaderIDData + (1 + pMissShader->m_uiShaderTableIndex) * D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT * 2, pShaderID, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
 	}
 
 	// 3. Hit shader
@@ -216,8 +217,22 @@ void D3DRayTracingScene::CreateShaderIDBuffer()
 		szWideShaderIdentifier += L"group";
 		pShaderID = oRTPSOProperties->GetShaderIdentifier(szWideShaderIdentifier.c_str());
 
-		memcpy(apShaderIDData + (1 + oMissShaderSet.size() + 2 * iMesh) * D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT, pShaderID, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-		memcpy(apShaderIDData + (1 + oMissShaderSet.size() + 2 * iMesh + 1) * D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT, pOcclusionShaderID, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+		memcpy(apShaderIDData + (1 + oMissShaderSet.size() + 2 * iMesh) * D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT * 2, pShaderID, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+		memcpy(apShaderIDData + (1 + oMissShaderSet.size() + 2 * iMesh + 1) * D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT * 2, pOcclusionShaderID, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+	
+		// Setting/Binding Vertex and Index buffers to local root signature
+		D3D12_GPU_VIRTUAL_ADDRESS pVertexBufferGPUAddress = D3DMesh::s_MeshList[iMesh].m_oRTVertexBuffer.m_oBuffer.m_pResource.Get()->GetGPUVirtualAddress();
+		D3D12_GPU_VIRTUAL_ADDRESS pIndexBufferGPUAddress = D3DMesh::s_MeshList[iMesh].m_oRTIndexBuffer.m_oBuffer.m_pResource.Get()->GetGPUVirtualAddress();
+
+		memcpy(
+			apShaderIDData + ((1 + oMissShaderSet.size() + 2 * iMesh) * D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT * 2) + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES,
+			&pVertexBufferGPUAddress,
+			sizeof(D3D12_GPU_VIRTUAL_ADDRESS));
+
+		memcpy(
+			apShaderIDData + ((1 + oMissShaderSet.size() + 2 * iMesh) * D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT * 2) + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES + sizeof(D3D12_GPU_VIRTUAL_ADDRESS),
+			&pIndexBufferGPUAddress,
+			sizeof(D3D12_GPU_VIRTUAL_ADDRESS));
 	}
 
 	m_oSceneShaderIDBuffer.WriteData(apShaderIDData, uiBufferSize);
@@ -251,13 +266,19 @@ void D3DRayTracingScene::ReleaseBVH()
 	*/
 }
 
-void D3DRayTracingScene::CreateGlobalRayTracingRootSignature(ID3D12Device5* a_pDevice)
+void D3DRayTracingScene::CreateRayTracingRootSignatures(ID3D12Device5* a_pDevice)
 {
 	if (!D3DDevice::isRayTracingEnabled())
 		return;
 
-	if (m_pRayTracingRootSignature.Get() != nullptr)
+	if (m_pRayTracingRootSignature.Get() != nullptr || m_pRayTracingLocalRootSignature.Get() != nullptr)
 		return;
+
+	/*
+	*
+	*	Global Root Signature
+	* 
+	*/
 
 	// It seems UAV have to be set in Descriptor Tables always ? 
 	D3D12_DESCRIPTOR_RANGE oUAVRange = {};
@@ -268,16 +289,19 @@ void D3DRayTracingScene::CreateGlobalRayTracingRootSignature(ID3D12Device5* a_pD
 	oUAVRootParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
 	oUAVRootParameter.DescriptorTable.NumDescriptorRanges = 1;
 	oUAVRootParameter.DescriptorTable.pDescriptorRanges = &oUAVRange;
+	oUAVRootParameter.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
 	D3D12_ROOT_PARAMETER oBVHRootParameter = {};
 	oBVHRootParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
 	oBVHRootParameter.Descriptor.RegisterSpace = 0;
 	oBVHRootParameter.Descriptor.ShaderRegister = 0;
+	oBVHRootParameter.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
 	D3D12_ROOT_PARAMETER oSceneConstantsParameter = {};
 	oSceneConstantsParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
 	oSceneConstantsParameter.Descriptor.RegisterSpace = 0;
 	oSceneConstantsParameter.Descriptor.ShaderRegister = 0;
+	oBVHRootParameter.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
 	D3D12_ROOT_PARAMETER pRayTracingRootParameters[] = { oUAVRootParameter, oBVHRootParameter, oSceneConstantsParameter };
 
@@ -301,10 +325,52 @@ void D3DRayTracingScene::CreateGlobalRayTracingRootSignature(ID3D12Device5* a_pD
 
 	if (!SUCCEEDED(a_pDevice->CreateRootSignature(0, rsBlob->GetBufferPointer(), rsBlob->GetBufferSize(), IID_PPV_ARGS(&m_pRayTracingRootSignature))))
 	{
-		OutputDebugStringA("Error : Create Root signature\n");
+		OutputDebugStringA("Error : Create Global Root signature\n");
 		assert(0);
 	}
-	m_pRayTracingRootSignature.Get()->SetName(L"Scene RT Root Signature");
+	m_pRayTracingRootSignature.Get()->SetName(L"Scene RT Global Root Signature");
+
+	/*
+	*
+	*	Local Root Signature
+	*
+	*/
+
+	D3D12_ROOT_PARAMETER oVertexBufferRootParameter = {};
+	oVertexBufferRootParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
+	oVertexBufferRootParameter.Descriptor.RegisterSpace = 0;
+	oVertexBufferRootParameter.Descriptor.ShaderRegister = 2;
+	oVertexBufferRootParameter.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+
+	D3D12_ROOT_PARAMETER oIndexBufferRootParameter = {};
+	oIndexBufferRootParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
+	oIndexBufferRootParameter.Descriptor.RegisterSpace = 0;
+	oIndexBufferRootParameter.Descriptor.ShaderRegister = 3; // I'll leave slot 1 for some Scene parameters
+	oIndexBufferRootParameter.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+
+	D3D12_ROOT_PARAMETER pRayTracingLocalRootParameters[] = { oVertexBufferRootParameter, oIndexBufferRootParameter };
+
+	D3D12_ROOT_SIGNATURE_DESC lrsDesc = {};
+	lrsDesc.NumParameters = _countof(pRayTracingLocalRootParameters);
+	lrsDesc.NumStaticSamplers = 0;
+	lrsDesc.pStaticSamplers = NULL;
+	lrsDesc.pParameters = pRayTracingLocalRootParameters;
+	lrsDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_LOCAL_ROOT_SIGNATURE;
+
+	D3D12SerializeRootSignature(&lrsDesc, D3D_ROOT_SIGNATURE_VERSION_1, &rsBlob, &errorBlob);
+	if (errorBlob != nullptr)
+	{
+		void* d = errorBlob->GetBufferPointer(); // TODO : Display error message
+		int a = 1;
+		assert(0);
+	}
+
+	if (!SUCCEEDED(a_pDevice->CreateRootSignature(0, rsBlob->GetBufferPointer(), rsBlob->GetBufferSize(), IID_PPV_ARGS(&m_pRayTracingLocalRootSignature))))
+	{
+		OutputDebugStringA("Error : Create Local Root signature\n");
+		assert(0);
+	}
+	m_pRayTracingLocalRootSignature.Get()->SetName(L"Scene RT Local Root Signature");
 }
 
 void D3DRayTracingScene::CreateGlobalRayTracingPSO(ID3D12Device5* a_pDevice)
@@ -329,9 +395,10 @@ void D3DRayTracingScene::CreateGlobalRayTracingPSO(ID3D12Device5* a_pDevice)
 	// n for Hit Shaders
 	// n for Hit Group (for each Hit Shader)
 	// 1 for Shader Config
-	// 1 for Root Signature
+	// 1 for Global Root Signature
+	// 1 for Local Root Signature
 	// 1 for RT Pipeline Config
-	const UINT c_uiSubobjectCount = 4 + (UINT)(oHitShaderSet.size()) * 2 + (UINT)(oMissShaderSet.size());
+	const UINT c_uiSubobjectCount = 5 + (UINT)(oHitShaderSet.size()) * 2 + (UINT)(oMissShaderSet.size());
 	UINT uiSubobjectCounter = 0;
 	D3D12_STATE_SUBOBJECT* aSubobject = new D3D12_STATE_SUBOBJECT[c_uiSubobjectCount];
 
@@ -440,14 +507,24 @@ void D3DRayTracingScene::CreateGlobalRayTracingPSO(ID3D12Device5* a_pDevice)
 	aSubobject[uiSubobjectCounter] = oShaderConfigSubobject;
 	uiSubobjectCounter++;
 
-	// 6. Root Signature
-	// This is the root signature, it's shared between the ray tracing shaders (same BVH, same UAV texture)
+	// 6. Global Root Signature
+	// This is the GLOBAL root signature, it's shared between the ray tracing shaders (same BVH, same UAV texture), i could pass lights here
 	D3D12_GLOBAL_ROOT_SIGNATURE oGlobalSig = {};
 	oGlobalSig.pGlobalRootSignature = m_pRayTracingRootSignature.Get();
 	D3D12_STATE_SUBOBJECT oGlobalRootSignatureSubobject = {};
 	oGlobalRootSignatureSubobject.Type = D3D12_STATE_SUBOBJECT_TYPE_GLOBAL_ROOT_SIGNATURE;
 	oGlobalRootSignatureSubobject.pDesc = &oGlobalSig;
 	aSubobject[uiSubobjectCounter] = oGlobalRootSignatureSubobject;
+	uiSubobjectCounter++;
+
+	// 6. Local Root Signature
+	// This is the LOCAL root signature, afaik this is one per hitgroup ? If i do it correctly, i can pass a structured buffer here for vertex fetching
+	D3D12_LOCAL_ROOT_SIGNATURE oLocalSig = {};
+	oLocalSig.pLocalRootSignature = m_pRayTracingLocalRootSignature.Get();
+	D3D12_STATE_SUBOBJECT oLocalRootSignatureSubobject = {};
+	oLocalRootSignatureSubobject.Type = D3D12_STATE_SUBOBJECT_TYPE_LOCAL_ROOT_SIGNATURE;
+	oLocalRootSignatureSubobject.pDesc = &oLocalSig;
+	aSubobject[uiSubobjectCounter] = oLocalRootSignatureSubobject;
 	uiSubobjectCounter++;
 
 	// 7. RT Pipeline Config
