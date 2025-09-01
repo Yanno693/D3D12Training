@@ -40,6 +40,7 @@ struct OcclusionPayload
 struct Vertex
 {
     float3 position;
+    float3 normal;
 };
 
 /*
@@ -63,7 +64,7 @@ float GetHardShadowOcclusion(RaytracingAccelerationStructure a_scene, float3 sur
     OcclusionPayload payLoad;
 
     RayDesc ray;
-    ray.Origin = WorldRayOrigin() + WorldRayDirection() * RayTCurrent() - surface_normal * 0.05;
+    ray.Origin = WorldRayOrigin() + WorldRayDirection() * RayTCurrent() - surface_normal * 0.001;
 
     ray.Direction = normalize(float3(1, 1, 1)); // TODO : Get normal of the triangle or something
     ray.TMin = 0.01;

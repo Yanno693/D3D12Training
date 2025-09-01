@@ -537,16 +537,19 @@ int main()
     D3DMesh oGroundMesh;
     D3DMesh oMesh;
     D3DMesh oMesh2;
+    D3DMesh oMesh3;
     //oMesh.Initialize("monkey", D3DDevice::s_device.Get());
     oGroundMesh.Initialize("ground", D3DDevice::s_Device.Get(), true);
     oMesh.Initialize("monkey", D3DDevice::s_Device.Get(), true);
     oMesh2.Initialize("monkey2", D3DDevice::s_Device.Get(), true);
+    oMesh3.Initialize("monkeysmooth", D3DDevice::s_Device.Get(), true);
     //oMesh.InitializeDebug(D3DDevice::s_device.Get());
     //oMesh.InitializeDebug(D3DDevice::s_device.Get(), true);
 
     D3DMesh::s_MeshList.push_back(oGroundMesh);
     D3DMesh::s_MeshList.push_back(oMesh);
     D3DMesh::s_MeshList.push_back(oMesh2);
+    D3DMesh::s_MeshList.push_back(oMesh3);
 
 
     test_texture = new D3DTexture;

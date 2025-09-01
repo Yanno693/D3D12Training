@@ -323,7 +323,13 @@ void D3DMesh::ParseModelGLTF(std::string const a_sPath, std::string const a_sPat
 	UINT oGLTFUVDataInBuffer = oGLTFFileJson["bufferViews"][oGLTFUVBufferViewID]["byteOffset"].get<UINT>();
 	UINT oGLTFUVLengthInBuffer = oGLTFFileJson["bufferViews"][oGLTFUVBufferViewID]["byteLength"].get<UINT>();
 
-	assert(oGLTFPositionCount == oGLTFUVCount);
+	UINT oGLTFNormalAccessorIndex = oGLTFFileJson["meshes"][0]["primitives"][0]["attributes"]["NORMAL"].get<UINT>();
+	UINT oGLTFNormalBufferViewID = oGLTFFileJson["accessors"][oGLTFNormalAccessorIndex]["bufferView"].get<UINT>();
+	UINT oGLTFNormalCount = oGLTFFileJson["accessors"][oGLTFNormalAccessorIndex]["count"].get<UINT>();
+	UINT oGLTFNormalDataInBuffer = oGLTFFileJson["bufferViews"][oGLTFNormalBufferViewID]["byteOffset"].get<UINT>();
+	UINT oGLTFNormalLengthInBuffer = oGLTFFileJson["bufferViews"][oGLTFNormalBufferViewID]["byteLength"].get<UINT>();
+
+	assert(oGLTFPositionCount == oGLTFUVCount && oGLTFPositionCount == oGLTFNormalCount);
 
 	UINT oGLTFIndicesAccessorIndex = oGLTFFileJson["meshes"][0]["primitives"][0]["indices"].get<UINT>();
 	UINT oGLTFIndicesBufferViewID = oGLTFFileJson["accessors"][oGLTFIndicesAccessorIndex]["bufferView"].get<UINT>();
@@ -345,6 +351,13 @@ void D3DMesh::ParseModelGLTF(std::string const a_sPath, std::string const a_sPat
 	m_oMeshUVData.size = oGLTFUVLengthInBuffer;
 	m_oMeshUVData.stride = oGLTFUVLengthInBuffer / oGLTFUVCount;
 	m_oMeshUVData.count = oGLTFUVCount;
+
+	m_oMeshNormalData.ptr = (char*)malloc(oGLTFNormalLengthInBuffer);
+	assert(m_oMeshNormalData.ptr != nullptr);
+	memcpy(m_oMeshNormalData.ptr, oGLTFBinData + oGLTFNormalDataInBuffer, oGLTFNormalLengthInBuffer);
+	m_oMeshNormalData.size = oGLTFNormalLengthInBuffer;
+	m_oMeshNormalData.stride = oGLTFNormalLengthInBuffer / oGLTFNormalCount;
+	m_oMeshNormalData.count = oGLTFNormalCount;
 
 	m_oMeshIndicesData.ptr = (char*)malloc(oGLTFIndicesLengthInBuffer);
 	assert(m_oMeshIndicesData.ptr != nullptr);
@@ -386,19 +399,33 @@ void D3DMesh::CreateGPUBuffers()
 
 void D3DMesh::CreateRTGPUBuffers(ID3D12Device5* a_pDevice)
 {
+	UINT uiVertexSize = m_oMeshPositionData.size + m_oMeshNormalData.size;
+	UINT uiVertexStride = m_oMeshPositionData.stride + m_oMeshNormalData.stride;
+	char* oVertexData = (char*)malloc(uiVertexSize);
+	assert(oVertexData != nullptr);
+
+	char* oVertexDataIt = oVertexData;
+
+	for (UINT i = 0; i < m_oMeshPositionData.count; i++)
+	{
+		memcpy(oVertexDataIt, m_oMeshPositionData.ptr + i * m_oMeshPositionData.stride, m_oMeshPositionData.stride);
+		memcpy(oVertexDataIt + m_oMeshPositionData.stride, m_oMeshNormalData.ptr + i * m_oMeshNormalData.stride, m_oMeshNormalData.stride);
+
+		oVertexDataIt += m_oMeshPositionData.stride + m_oMeshNormalData.stride;
+	}
+	
 	if (!D3DDevice::isRayTracingEnabled())
 		return;
 
-	g_D3DBufferManager.InitializeGenericBuffer(&m_oRTVertexBuffer.m_oBuffer, m_oMeshPositionData.size);
-	m_oRTVertexBuffer.m_oData.SizeInBytes = m_oMeshPositionData.size;
-	m_oRTVertexBuffer.m_oData.StrideInBytes = m_oMeshPositionData.stride;
-	m_oRTVertexBuffer.WriteData(m_oMeshPositionData.ptr, m_oMeshPositionData.size);
+	g_D3DBufferManager.InitializeGenericBuffer(&m_oRTVertexBuffer.m_oBuffer, uiVertexSize);
+	m_oRTVertexBuffer.m_oData.SizeInBytes = uiVertexSize;
+	m_oRTVertexBuffer.m_oData.StrideInBytes = uiVertexStride;
+	m_oRTVertexBuffer.WriteData(oVertexData, uiVertexSize);
 
 	g_D3DBufferManager.InitializeGenericBuffer(&m_oRTIndexBuffer.m_oBuffer, m_oMeshIndicesData.size);
 	m_oRTIndexBuffer.m_oData.SizeInBytes = m_oMeshIndicesData.size;
 	m_oRTIndexBuffer.m_oData.Format = (m_oMeshIndicesData.stride == sizeof(USHORT) ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT);
 	m_oRTIndexBuffer.WriteData(m_oMeshIndicesData.ptr, m_oMeshIndicesData.size);
-
 
 	// Create BVH
 	m_oBVHGeometry.Type = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
@@ -423,6 +450,8 @@ void D3DMesh::CreateRTGPUBuffers(ID3D12Device5* a_pDevice)
 
 	g_D3DBufferManager.InitializeGenericBuffer(&m_oBVH, (UINT)oBVHPreBuildInfo.ResultDataMaxSizeInBytes, true, D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE);
 	g_D3DBufferManager.InitializeGenericBuffer(&m_oBVHScratch, (UINT)oBVHPreBuildInfo.ScratchDataSizeInBytes, true);
+
+	free(oVertexData);
 }
 
 

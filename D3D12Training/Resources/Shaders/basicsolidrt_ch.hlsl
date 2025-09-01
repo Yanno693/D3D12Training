@@ -21,15 +21,21 @@ void basicsolidrt_hit(inout RTPayload payload, BuiltInTriangleIntersectionAttrib
     const float3 B = VertexBuffer[id1].position;
     const float3 C = VertexBuffer[id2].position;
 
+    const float3 NA = VertexBuffer[id0].normal;
+    const float3 NB = VertexBuffer[id1].normal;
+    const float3 NC = VertexBuffer[id2].normal;
+
+    
     float3 AB = normalize(B - A);
     float3 AC = normalize(C - A);
-    float3 normal = normalize(cross(AB, AC));
+    float3 normal = NA * barycentrics.x + NB * barycentrics.y + NC * barycentrics.z;
 
     float f = GetHardShadowOcclusion(scene, normal);
 
     //float3 hitColor = A * barycentrics.x + B * barycentrics.y + C * barycentrics.z;
-    float3 hitColor = normal;
+    //float3 hitColor = normal;
 
     //payload.color = float4(0,0,1,0) * (1.0f - f);
-    payload.color = float4(hitColor, 0) * (1.0f - f);
+    //payload.color = float4(normal, 0) * (1.0f - f);
+    payload.color = float4(normal, 0);
 }

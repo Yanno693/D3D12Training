@@ -36,6 +36,7 @@ private:
 
 	ExtraPtr m_oMeshPositionData = {};
 	ExtraPtr m_oMeshUVData = {};
+	ExtraPtr m_oMeshNormalData = {};
 	ExtraPtr m_oMeshIndicesData = {};
 
 	/*
