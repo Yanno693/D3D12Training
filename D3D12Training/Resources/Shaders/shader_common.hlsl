@@ -22,7 +22,7 @@ cbuffer SceneData : register(b0, space0)
     float4x4 InvViewMatrix;
 };
 
-cbuffer InstanceData : register(b0, space1)
+cbuffer InstanceData : register(b1, space0)
 {
     float4x4 ModelMatrix;
 };
@@ -39,8 +39,8 @@ struct OcclusionPayload
 
 struct Vertex
 {
-    float3 position;
-    float3 normal;
+    float3 position : POSITION;
+    float3 normal : TEXCOORD;
 };
 
 /*

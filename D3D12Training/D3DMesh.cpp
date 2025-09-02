@@ -375,30 +375,37 @@ void D3DMesh::ParseModelGLTF(std::string const a_sPath, std::string const a_sPat
 
 void D3DMesh::CreateGPUBuffers()
 {
-	char* oVertexData = (char*)malloc(m_oMeshPositionData.size + m_oMeshUVData.size);
+	UINT uiVertexBufferSize = m_oMeshPositionData.size + m_oMeshNormalData.size;
+	UINT uiVertexStride = m_oMeshPositionData.stride + m_oMeshNormalData.stride;
+	char* oVertexData = (char*)malloc(uiVertexBufferSize);
 	assert(oVertexData != nullptr);
 
 	char* oVertexDataIt = oVertexData;
-	
+
 	for (UINT i = 0; i < m_oMeshPositionData.count; i++)
 	{
 		memcpy(oVertexDataIt, m_oMeshPositionData.ptr + i * m_oMeshPositionData.stride, m_oMeshPositionData.stride);
-		memcpy(oVertexDataIt + m_oMeshPositionData.stride, m_oMeshUVData.ptr + i * m_oMeshUVData.stride, m_oMeshUVData.stride);
-		
-		oVertexDataIt += m_oMeshPositionData.stride + m_oMeshUVData.stride;
+		memcpy(oVertexDataIt + m_oMeshPositionData.stride, m_oMeshNormalData.ptr + i * m_oMeshNormalData.stride, m_oMeshNormalData.stride);
+
+		oVertexDataIt += m_oMeshPositionData.stride + m_oMeshNormalData.stride;
 	}
 
-	g_D3DBufferManager.InitializeVertexBuffer(&m_oVertexBuffer, m_oMeshPositionData.size + m_oMeshUVData.size, m_oMeshPositionData.stride + m_oMeshUVData.stride);
-	m_oVertexBuffer.WriteData(oVertexData, m_oMeshPositionData.size + m_oMeshUVData.size);
+	g_D3DBufferManager.InitializeVertexBuffer(&m_oVertexBuffer, uiVertexBufferSize, uiVertexStride);
+	m_oVertexBuffer.WriteData(oVertexData, uiVertexBufferSize);
 
 	g_D3DBufferManager.InitializeIndexBuffer(&m_oIndexBuffer, m_oMeshIndicesData.size, m_oMeshIndicesData.stride == sizeof(USHORT));
 	m_oIndexBuffer.WriteData(m_oMeshIndicesData.ptr, m_oMeshIndicesData.size);
+
+	g_D3DBufferManager.InitializeConstantBuffer(&m_oInstanceBuffer, sizeof(MeshConstant));
 
 	free(oVertexData);
 }
 
 void D3DMesh::CreateRTGPUBuffers(ID3D12Device5* a_pDevice)
 {
+	if (!D3DDevice::isRayTracingEnabled())
+		return;
+
 	UINT uiVertexSize = m_oMeshPositionData.size + m_oMeshNormalData.size;
 	UINT uiVertexStride = m_oMeshPositionData.stride + m_oMeshNormalData.stride;
 	char* oVertexData = (char*)malloc(uiVertexSize);
@@ -414,9 +421,6 @@ void D3DMesh::CreateRTGPUBuffers(ID3D12Device5* a_pDevice)
 		oVertexDataIt += m_oMeshPositionData.stride + m_oMeshNormalData.stride;
 	}
 	
-	if (!D3DDevice::isRayTracingEnabled())
-		return;
-
 	g_D3DBufferManager.InitializeGenericBuffer(&m_oRTVertexBuffer.m_oBuffer, uiVertexSize);
 	m_oRTVertexBuffer.m_oData.SizeInBytes = uiVertexSize;
 	m_oRTVertexBuffer.m_oData.StrideInBytes = uiVertexStride;
@@ -635,25 +639,31 @@ void D3DMesh::Initialize(std::string a_sPath, ID3D12Device5* a_pDevice, bool a_b
 	ParseModelGLTF(m_szModelPath + ".gltf", m_szModelPath + ".bin");
 
 	CreateGPUBuffers();
-	CreateRTGPUBuffers(a_pDevice);
 
 	// Set debug name
 	std::wstring ws(a_sPath.begin(), a_sPath.end());
 	std::wstringstream ssVertexBuffer;
 	ssVertexBuffer << ws << " Vertex Buffer";
 	std::wstringstream ssRTVertexBuffer;
-	ssRTVertexBuffer << ws << " RT Vertex Buffer";
-	std::wstringstream ssRTIndexBuffer;
-	ssRTIndexBuffer << ws << " RT Index Buffer";
-	std::wstringstream ssRTBVH;
-	ssRTBVH << ws << " BVH";
-	std::wstringstream ssRTBVHScratch;
-	ssRTBVHScratch << ws << " BVH Scratch";
 	m_oVertexBuffer.SetDebugName(ssVertexBuffer.str().c_str());
-	m_oRTVertexBuffer.SetDebugName(ssRTVertexBuffer.str().c_str());
-	m_oRTIndexBuffer.SetDebugName(ssRTIndexBuffer.str().c_str());
-	m_oBVH.SetDebugName(ssRTBVH.str().c_str());
-	m_oBVHScratch.SetDebugName(ssRTBVHScratch.str().c_str());
+
+	if (D3DDevice::isRayTracingEnabled())
+	{
+		CreateRTGPUBuffers(a_pDevice);
+
+		ssRTVertexBuffer << ws << " RT Vertex Buffer";
+		std::wstringstream ssRTIndexBuffer;
+		ssRTIndexBuffer << ws << " RT Index Buffer";
+		std::wstringstream ssRTBVH;
+		ssRTBVH << ws << " BVH";
+		std::wstringstream ssRTBVHScratch;
+		ssRTBVHScratch << ws << " BVH Scratch";
+
+		m_oRTVertexBuffer.SetDebugName(ssRTVertexBuffer.str().c_str());
+		m_oRTIndexBuffer.SetDebugName(ssRTIndexBuffer.str().c_str());
+		m_oBVH.SetDebugName(ssRTBVH.str().c_str());
+		m_oBVHScratch.SetDebugName(ssRTBVHScratch.str().c_str());
+	}
 
 	// Create PSO
 	D3D12_INPUT_LAYOUT_DESC oInputLayoutDesc = {};
@@ -671,18 +681,22 @@ void D3DMesh::Initialize(std::string a_sPath, ID3D12Device5* a_pDevice, bool a_b
 	D3D12_ROOT_PARAMETER oVBSceneRootParameter = {};
 	oVBSceneRootParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
 	oVBSceneRootParameter.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+	oVBSceneRootParameter.Descriptor.ShaderRegister = 0;
+	oVBSceneRootParameter.Descriptor.RegisterSpace = 0;
 
 	D3D12_ROOT_PARAMETER oVBPerObjectRootParameter = {};
 	oVBPerObjectRootParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
 	oVBPerObjectRootParameter.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+	oVBPerObjectRootParameter.Descriptor.ShaderRegister = 1;
+	oVBPerObjectRootParameter.Descriptor.RegisterSpace = 0;
 
 	D3D12_ROOT_PARAMETER pVBRootParameters[] = { oVBSceneRootParameter , oVBPerObjectRootParameter };
 
 	D3D12_ROOT_SIGNATURE_DESC rsDesc = {};
-	rsDesc.NumParameters = 1;
+	rsDesc.NumParameters = _countof(pVBRootParameters);
 	rsDesc.NumStaticSamplers = 0;
 	rsDesc.pStaticSamplers = NULL;
-	rsDesc.pParameters = pVBRootParameters; // TODO : Use a list, could be better
+	rsDesc.pParameters = pVBRootParameters;
 	rsDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
 
 	Microsoft::WRL::ComPtr<ID3DBlob> rsBlob = nullptr;
@@ -717,9 +731,13 @@ void D3DMesh::Initialize(std::string a_sPath, ID3D12Device5* a_pDevice, bool a_b
 	oPsoDesc.BlendState.RenderTarget[0].DestBlend = D3D12_BLEND_DEST_COLOR;
 	oPsoDesc.BlendState.RenderTarget[0].DestBlendAlpha = D3D12_BLEND_ZERO;
 
+	oPsoDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
+	oPsoDesc.DepthStencilState.DepthEnable = true;
+	oPsoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_GREATER_EQUAL;
+
 	oPsoDesc.VS = oDxVs;
 	oPsoDesc.PS = oDxPs;
-	oPsoDesc.DepthStencilState.DepthEnable = false;
+	//oPsoDesc.DepthStencilState.DepthEnable = false;
 	oPsoDesc.DepthStencilState.StencilEnable = false;
 	oPsoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_BACK;
 	oPsoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
@@ -737,6 +755,16 @@ void D3DMesh::Initialize(std::string a_sPath, ID3D12Device5* a_pDevice, bool a_b
 
 void D3DMesh::Draw(ID3D12GraphicsCommandList* a_pCommandList)
 {
+	// TODO : To move in a sort of Update() fuction
+	DirectX::XMMATRIX oTranslationMatrix = DirectX::XMMatrixTranslation(m_oTransform.position.x, m_oTransform.position.y, m_oTransform.position.z);
+	DirectX::XMMATRIX oScaleMatrix = DirectX::XMMatrixScaling(m_oTransform.scale.x, m_oTransform.scale.y, m_oTransform.scale.z);
+	DirectX::XMMATRIX oTransform = oScaleMatrix * oTranslationMatrix;
+
+	MeshConstant oConstant = {};
+	oConstant.mModelMatrix = oTransform;
+
+	m_oInstanceBuffer.WriteData(&oConstant, sizeof(oConstant));
+	
 	D3D12_VERTEX_BUFFER_VIEW vViews[1] = { m_oVertexBuffer.m_oView };
 	
 	a_pCommandList->IASetVertexBuffers(0, 1, vViews);
@@ -744,8 +772,8 @@ void D3DMesh::Draw(ID3D12GraphicsCommandList* a_pCommandList)
 	a_pCommandList->SetGraphicsRootSignature(m_pRootSignature.Get());
 
 	a_pCommandList->SetGraphicsRootConstantBufferView(0, g_SceneConstantBuffer.m_pResource->GetGPUVirtualAddress());
+	a_pCommandList->SetGraphicsRootConstantBufferView(1, m_oInstanceBuffer.m_pResource->GetGPUVirtualAddress()); // Todo : implement instance buffer
 	//a_pCommandList->SetGraphicsRootDescriptorTable(0, g_SceneConstantBuffer.m_eGPUHandle);
-	// a_pCommandList->SetGraphicsRootConstantBufferView(1, m_oInstanceBuffer.m_pResource->GetGPUVirtualAddress()); // Todo : implement instance buffer
 
 
 	D3D12_RECT rect;

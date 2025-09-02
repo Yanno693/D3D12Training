@@ -21,7 +21,9 @@ GameCamera g_Camera;
 extern GameScreenResolution g_ScreenResolution;
 
 D3DTexture* test_texture;
-D3DRenderTarget* test_rt;
+D3DTexture* test_depth;
+D3DRenderTarget* mainRT;
+D3DDepthBuffer* mainDepth;
 
 DirectX::XMVECTOR up{ 0.0f, 1, 0, 0 };
 
@@ -383,7 +385,7 @@ void RenderBegin()
     nbFrame++;
 
     std::stringstream ss;
-    ss << "Begining Frame N." << nbFrame << std::endl;
+    ss << "Beginning Frame N." << nbFrame << std::endl;
     OutputDebugStringA(ss.str().c_str());
 
     if (!SUCCEEDED(g_commandAllocator->Reset()))
@@ -429,55 +431,53 @@ void RenderLoop()
     g_SceneData.oScreenSize.y = (float)g_ScreenResolution.height;
     g_SceneConstantBuffer.WriteData(&g_SceneData, sizeof(g_SceneData));
 
-    // Draw In Texture
-    test_rt->TransisitonState(g_defaultCommandList.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET);
-    g_defaultCommandList->OMSetRenderTargets(1, &test_rt->m_uiCPUHandle, false, nullptr);
-    g_defaultCommandList->ClearRenderTargetView(test_rt->m_uiCPUHandle, color, 0, NULL);
-
-    // Draw Models;
-    for (UINT i = 0; i < D3DMesh::s_MeshList.size(); i++)
+    if (D3DDevice::isRayTracingEnabled())
     {
-        //g_MeshList[i].Draw(g_defaultCommandList.Get());
-        //g_MeshList[i].DrawRT(g_defaultCommandList.Get());
-        g_D3DRayTracingScene.SubmitForDraw(&D3DMesh::s_MeshList[i]);
-        //g_D3DRayTracingScene.
+        // Draw In Texture
+        /*
+        test_rt->TransisitonState(g_defaultCommandList.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET);
+        g_defaultCommandList->OMSetRenderTargets(1, &test_rt->m_uiCPUHandle, false, nullptr);
+        g_defaultCommandList->ClearRenderTargetView(test_rt->m_uiCPUHandle, color, 0, NULL);
+        */
+
+        // Draw Models;
+        for (UINT i = 0; i < D3DMesh::s_MeshList.size(); i++)
+        {
+            g_D3DRayTracingScene.SubmitForDraw(&D3DMesh::s_MeshList[i]);
+        }
+
+        mainRT->TransisitonState(g_defaultCommandList.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        g_D3DRayTracingScene.setRenderTarget(mainRT->GetD3DTexture());
+
+        g_D3DRayTracingScene.DrawScene(g_defaultCommandList.Get());
+        
+        // Very dirty copy into the backbuffer
+        mainRT->GetD3DTexture()->WaitForUAV(g_defaultCommandList.Get());
+        g_D3DBackBuffers[BackBufferIndex].TransisitonState(g_defaultCommandList.Get(), D3D12_RESOURCE_STATE_COPY_DEST);
+        mainRT->TransisitonState(g_defaultCommandList.Get(), D3D12_RESOURCE_STATE_COPY_SOURCE);
+
+        g_defaultCommandList.Get()->CopyResource(g_D3DBackBuffers[BackBufferIndex].m_pResource.Get(), test_texture->m_pResource.Get());
+        mainRT->TransisitonState(g_defaultCommandList.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        g_D3DBackBuffers[BackBufferIndex].TransisitonState(g_defaultCommandList.Get(), D3D12_RESOURCE_STATE_COMMON);
     }
-
-    test_rt->TransisitonState(g_defaultCommandList.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-    g_D3DRayTracingScene.setRenderTarget(test_rt->GetD3DTexture());
-
-    g_D3DRayTracingScene.DrawScene(g_defaultCommandList.Get());
-
-    // Draw In Backbuffer
-    g_D3DBackBuffers[BackBufferIndex].TransisitonState(g_defaultCommandList.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET);
-    g_defaultCommandList->OMSetRenderTargets(1, &g_D3DBackBuffers[BackBufferIndex].m_uiCPUHandle, false, NULL);
-    g_defaultCommandList->ClearRenderTargetView(g_D3DBackBuffers[BackBufferIndex].m_uiCPUHandle, color, 0, NULL);
-
-
-    // Draw Models;
-    for (UINT i = 0; i < D3DMesh::s_MeshList.size(); i++)
+    else
     {
-        //g_MeshList[i].Draw(g_defaultCommandList.Get());
-        //g_MeshList[i].DrawRT(g_defaultCommandList.Get());
+        // Draw In Backbuffer
+        g_D3DBackBuffers[BackBufferIndex].TransisitonState(g_defaultCommandList.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET);
+        mainDepth->TransisitonState(g_defaultCommandList.Get(), D3D12_RESOURCE_STATE_DEPTH_WRITE);
 
+        g_defaultCommandList->OMSetRenderTargets(1, &g_D3DBackBuffers[BackBufferIndex].m_uiCPUHandle, false, &mainDepth->m_uiCPUHandle);
+        g_defaultCommandList->ClearRenderTargetView(g_D3DBackBuffers[BackBufferIndex].m_uiCPUHandle, color, 0, NULL);
+        g_defaultCommandList->ClearDepthStencilView(mainDepth->m_uiCPUHandle, D3D12_CLEAR_FLAG_DEPTH, 0, 0, 0, NULL);
+
+        // Draw Models;
+        for (UINT i = 0; i < D3DMesh::s_MeshList.size(); i++)
+        {
+            D3DMesh::s_MeshList[i].Draw(g_defaultCommandList.Get());
+        }
     }
     
     g_D3DBackBuffers[BackBufferIndex].TransisitonState(g_defaultCommandList.Get(), D3D12_RESOURCE_STATE_COMMON);
-
-    // Very dirty copy into the backbuffer
-    if(D3DDevice::isRayTracingEnabled())
-    {
-        test_rt->GetD3DTexture()->WaitForUAV(g_defaultCommandList.Get());
-        g_D3DBackBuffers[BackBufferIndex].TransisitonState(g_defaultCommandList.Get(), D3D12_RESOURCE_STATE_COPY_DEST);
-        test_rt->TransisitonState(g_defaultCommandList.Get(), D3D12_RESOURCE_STATE_COPY_SOURCE);
-
-        g_defaultCommandList.Get()->CopyResource(g_D3DBackBuffers[BackBufferIndex].m_pResource.Get(), test_texture->m_pResource.Get());
-        test_rt->TransisitonState(g_defaultCommandList.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        g_D3DBackBuffers[BackBufferIndex].TransisitonState(g_defaultCommandList.Get(), D3D12_RESOURCE_STATE_COMMON);
-    }
-
-
-    //g_defaultCommandList.Get()->Cop
 }
 
 void RenderEnd()
@@ -553,10 +553,18 @@ int main()
 
 
     test_texture = new D3DTexture;
-    test_rt = new D3DRenderTarget;
+    test_depth = new D3DTexture;
+    mainRT = new D3DRenderTarget;
+    mainDepth = new D3DDepthBuffer;
+
     g_D3DBufferManager.InitializeTexture(test_texture, g_ScreenResolution.width, g_ScreenResolution.height, DXGI_FORMAT_R16G16B16A16_FLOAT);
-    g_D3DRenderTargetManager.InitializeRenderTargetFromTexture(test_rt, test_texture);
-    test_rt->SetDebugName(L"Test Texture");
+    g_D3DBufferManager.InitializeTexture(test_depth, g_ScreenResolution.width, g_ScreenResolution.height, DXGI_FORMAT_D32_FLOAT, true);
+
+    g_D3DRenderTargetManager.InitializeRenderTargetFromTexture(mainRT, test_texture);
+
+    g_D3DRenderTargetManager.InitializeDepthBufferFromTexture(mainDepth, test_depth);
+    mainRT->SetDebugName(L"Main Render Target");
+    mainDepth->SetDebugName(L"Main Depth");
 
     MSG message = {};
 

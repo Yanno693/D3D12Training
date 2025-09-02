@@ -78,6 +78,18 @@ void D3DRenderTargetManager::InitializeDepthBuffer(D3DDepthBuffer* a_pDepthBuffe
     IncrementDSVOffset();
 }
 
+void D3DRenderTargetManager::InitializeDepthBufferFromTexture(D3DDepthBuffer* a_pDepthBuffer, D3DTexture* a_pTexture)
+{
+    assert(m_pDevice != nullptr);
+
+    m_pDevice->CreateDepthStencilView(a_pTexture->m_pResource.Get(), NULL, m_uiCurrentDSVDecriptorOffset);
+    a_pDepthBuffer->m_uiCPUHandle = m_uiCurrentDSVDecriptorOffset;
+    a_pDepthBuffer->m_pResource = a_pTexture->m_pResource;
+    a_pDepthBuffer->m_pTexture = a_pTexture;
+
+    IncrementDSVOffset();
+}
+
 void D3DRenderTargetManager::SetDebugName(LPCWSTR a_sName)
 {
     assert(m_pRTVDescriptorHeap != nullptr);

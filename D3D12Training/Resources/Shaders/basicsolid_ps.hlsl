@@ -3,6 +3,7 @@
 struct VertexOutput
 {
     float4 position : SV_POSITION;
+    float3 normal : NORMAL;
 };
 
 struct PixelOutput
@@ -15,15 +16,6 @@ PixelOutput main(VertexOutput v)
    
    PixelOutput p;
 
-   if(v.position.x > 1280/2)
-   {
-
-   p.color = float4(1, 0, 1, 1);
-   }
-   else
-   {
-   p.color = float4(0, 0, 1, 1);
-
-   }
+   p.color = float4(v.normal, 0);
    return p;
 }

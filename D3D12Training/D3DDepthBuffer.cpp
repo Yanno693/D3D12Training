@@ -23,6 +23,11 @@ void D3DDepthBuffer::TransisitonState(ID3D12GraphicsCommandList* a_commandList, 
 	}
 }
 
+D3DTexture* D3DDepthBuffer::GetD3DTexture()
+{
+	return m_pTexture;
+}
+
 void D3DDepthBuffer::SetDebugName(LPCWSTR a_sName)
 {
 	assert(m_pResource != nullptr);

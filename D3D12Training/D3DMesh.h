@@ -18,6 +18,11 @@ struct ExtraPtr
 	UINT count = 0;
 };
 
+struct MeshConstant
+{
+	DirectX::XMMATRIX mModelMatrix;
+};
+
 class D3DMesh
 {
 private:
@@ -53,6 +58,7 @@ public:
 	// Raster Stuff
 	D3DVertexBuffer m_oVertexBuffer; // Vertex Buffer of the Mesh
 	D3DIndexBuffer m_oIndexBuffer; // Index buffer ot the mesh
+	D3DConstantBuffer m_oInstanceBuffer; // Instance buffer of the mesh
 	D3DShaderPair* m_pShader = nullptr;
 
 	// Ray Tracing Stuff
@@ -62,11 +68,8 @@ public:
 	D3DGenericBuffer m_oBVHScratch; // "Bottom Level Acceleration Stucture" but for updating ?
 	D3D12_RAYTRACING_GEOMETRY_DESC m_oBVHGeometry = {};
 	D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS m_oBVHInput = {};
-	//D3DRTShaderGroup* m_pRTShader = nullptr;
 
 	D3DHitShader* m_pHitShader = nullptr;
-
-	D3DConstantBuffer m_oInstanceBuffer; // Constant Buffer for the mesh, contains the transform of the object (on the Model matrix)
 
 	void Initialize(std::string const a_sPath, ID3D12Device5* a_pDevice, bool a_bUsesRayTracing = false);
 	void InitializeDebug(ID3D12Device5* a_pDevice, bool a_bUsesRayTracing = false);

@@ -193,7 +193,24 @@ void D3DBufferManager::InitializeVertexBuffer(D3DVertexBuffer* a_pVertexBuffer, 
     a_pVertexBuffer->m_oView = oView;
 }
 
-void D3DBufferManager::InitializeTexture(D3DTexture* a_pTexture, UINT const a_uiWidth, UINT const a_uiHeight, DXGI_FORMAT const a_eTextureFormat, D3D12_RESOURCE_STATES const a_eDefaultState)
+DXGI_FORMAT DepthViewResourceFromFormat(DXGI_FORMAT a_eFormat)
+{
+    switch (a_eFormat)
+    {
+    case DXGI_FORMAT_D32_FLOAT_S8X24_UINT:
+        return DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS;
+    case DXGI_FORMAT_D32_FLOAT:
+        return DXGI_FORMAT_R32_FLOAT;
+    case DXGI_FORMAT_D24_UNORM_S8_UINT:
+        return DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
+    case DXGI_FORMAT_D16_UNORM:
+        return DXGI_FORMAT_R16_UNORM;
+    default:
+        return DXGI_FORMAT_UNKNOWN;
+    }
+}
+
+void D3DBufferManager::InitializeTexture(D3DTexture* a_pTexture, UINT const a_uiWidth, UINT const a_uiHeight, DXGI_FORMAT const a_eTextureFormat, bool a_bIsDepth, D3D12_RESOURCE_STATES const a_eDefaultState)
 {
     assert(m_pDevice != nullptr);
 
@@ -208,7 +225,14 @@ void D3DBufferManager::InitializeTexture(D3DTexture* a_pTexture, UINT const a_ui
     resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
     resourceDesc.SampleDesc.Count = 1;
     resourceDesc.SampleDesc.Quality = 0;
-    resourceDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS | D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+    if (a_bIsDepth)
+    {
+        resourceDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+    }
+    else
+    {
+        resourceDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS | D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+    }
 
     // TODO : refactor other resource initializers with this method, this looks rad
     D3D12_RESOURCE_ALLOCATION_INFO allocationInfo = m_pDevice->GetResourceAllocationInfo(0, 1, &resourceDesc);
@@ -232,7 +256,7 @@ void D3DBufferManager::InitializeTexture(D3DTexture* a_pTexture, UINT const a_ui
     D3D12_SHADER_RESOURCE_VIEW_DESC descSRV = {};
     D3D12_UNORDERED_ACCESS_VIEW_DESC descUAV = {};
 
-    descSRV.Format = a_eTextureFormat;
+    descSRV.Format = (a_bIsDepth ? DepthViewResourceFromFormat(a_eTextureFormat) : a_eTextureFormat);
     descSRV.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
     descSRV.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
     descSRV.Texture2D.MostDetailedMip = 0;
@@ -246,19 +270,21 @@ void D3DBufferManager::InitializeTexture(D3DTexture* a_pTexture, UINT const a_ui
     descUAV.Texture2D.PlaneSlice = 0;
 
     m_pDevice->CreateShaderResourceView(a_pTexture->m_pResource.Get(), &descSRV, m_uiCurrentDecriptorOffset);
-    m_pDevice->CreateShaderResourceView(a_pTexture->m_pResource.Get(), &descSRV, m_uiCurrentDecriptorOffset);
 
     a_pTexture->m_eSRVGPUHandle = m_uiCurrentGPUDecriptorOffset;
     a_pTexture->m_oSRVView = descSRV;
 
     IncrementOffset();
 
-    m_pDevice->CreateUnorderedAccessView(a_pTexture->m_pResource.Get(), nullptr, &descUAV, m_uiCurrentDecriptorOffset);
+    if (!a_bIsDepth)
+    {
+        m_pDevice->CreateUnorderedAccessView(a_pTexture->m_pResource.Get(), nullptr, &descUAV, m_uiCurrentDecriptorOffset);
 
-    a_pTexture->m_eUAVGPUHandle = m_uiCurrentGPUDecriptorOffset;
-    a_pTexture->m_oUAVView = descUAV;
+        a_pTexture->m_eUAVGPUHandle = m_uiCurrentGPUDecriptorOffset;
+        a_pTexture->m_oUAVView = descUAV;
 
-    IncrementOffset();
+        IncrementOffset();
+    }
 
     a_pTexture->m_uiResourceSize = allocationInfo.SizeInBytes;
     a_pTexture->m_eCurrentState = a_eDefaultState;

@@ -25,6 +25,7 @@ public:
 	void InitializeRenderTarget(D3DRenderTarget* a_pRenderTarget);
 	void InitializeRenderTargetFromTexture(D3DRenderTarget* a_pRenderTarget, D3DTexture* a_pTexture);
 	void InitializeDepthBuffer(D3DDepthBuffer* a_pDepthBuffer);
+	void InitializeDepthBufferFromTexture(D3DDepthBuffer* a_pDepthBuffer, D3DTexture* a_pTexture);
 
 	void SetDebugName(LPCWSTR a_sName);
 };
