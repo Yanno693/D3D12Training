@@ -625,11 +625,9 @@ void D3DMesh::InitializeDebug(ID3D12Device5* a_pDevice, bool a_bUsesRayTracing)
 void D3DMesh::Initialize(std::string a_sPath, ID3D12Device5* a_pDevice, bool a_bUsesRayTracing)
 {
 	std::stringstream sObjectPath;
-	std::stringstream sModelPath;
 	std::stringstream sModelPathGLTF;
 	std::stringstream sModelPathGLTFBin;
 	sObjectPath << "./Objects/" << a_sPath << ".xml";
-	sModelPath << "./Models/" << a_sPath << ".dae";
 	sModelPathGLTF << "./Models/" << a_sPath << ".gltf";
 	sModelPathGLTFBin << "./Models/" << a_sPath << ".bin";
 
@@ -722,18 +720,21 @@ void D3DMesh::Initialize(std::string a_sPath, ID3D12Device5* a_pDevice, bool a_b
 	oPsoDesc.SampleDesc.Count = 1;
 	oPsoDesc.SampleMask = 0xFFFFFFFF;
 	oPsoDesc.RTVFormats[0] = DXGI_FORMAT_R16G16B16A16_FLOAT;
-	oPsoDesc.BlendState.RenderTarget[0].BlendEnable = true;
+	oPsoDesc.BlendState.RenderTarget[0].BlendEnable = false;
 	oPsoDesc.BlendState.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
-	oPsoDesc.BlendState.RenderTarget[0].BlendOp = D3D12_BLEND_OP_ADD;
-	oPsoDesc.BlendState.RenderTarget[0].BlendOpAlpha = D3D12_BLEND_OP_ADD;
+
 	oPsoDesc.BlendState.RenderTarget[0].SrcBlend = D3D12_BLEND_SRC_COLOR;
+	oPsoDesc.BlendState.RenderTarget[0].DestBlend = D3D12_BLEND_ZERO;
+	oPsoDesc.BlendState.RenderTarget[0].BlendOp = D3D12_BLEND_OP_ADD;
+
 	oPsoDesc.BlendState.RenderTarget[0].SrcBlendAlpha = D3D12_BLEND_ONE;
-	oPsoDesc.BlendState.RenderTarget[0].DestBlend = D3D12_BLEND_DEST_COLOR;
 	oPsoDesc.BlendState.RenderTarget[0].DestBlendAlpha = D3D12_BLEND_ZERO;
+	oPsoDesc.BlendState.RenderTarget[0].BlendOpAlpha = D3D12_BLEND_OP_ADD;
 
 	oPsoDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
 	oPsoDesc.DepthStencilState.DepthEnable = true;
-	oPsoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_GREATER_EQUAL;
+	oPsoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+	oPsoDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
 
 	oPsoDesc.VS = oDxVs;
 	oPsoDesc.PS = oDxPs;

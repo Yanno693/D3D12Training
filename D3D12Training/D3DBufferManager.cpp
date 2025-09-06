@@ -248,7 +248,14 @@ void D3DBufferManager::InitializeTexture(D3DTexture* a_pTexture, UINT const a_ui
     heapDesc.Properties.VisibleNodeMask = 0;
     heapDesc.Properties.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
 
-    if (!SUCCEEDED(m_pDevice->CreateCommittedResource(&heapDesc.Properties, heapDesc.Flags, &resourceDesc, a_eDefaultState, NULL, IID_PPV_ARGS(&a_pTexture->m_pResource))))
+    D3D12_CLEAR_VALUE clearValue = {};
+    clearValue.Format = a_eTextureFormat;
+    clearValue.Color[0] = a_bIsDepth ? 1.0f : 0.0f;
+    clearValue.Color[1] = 0;
+    clearValue.Color[2] = 0;
+    clearValue.Color[3] = 0;
+
+    if (!SUCCEEDED(m_pDevice->CreateCommittedResource(&heapDesc.Properties, heapDesc.Flags, &resourceDesc, a_eDefaultState, &clearValue, IID_PPV_ARGS(&a_pTexture->m_pResource))))
     {
         assert(0);
     }

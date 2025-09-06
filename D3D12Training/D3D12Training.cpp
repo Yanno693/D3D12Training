@@ -433,14 +433,7 @@ void RenderLoop()
 
     if (D3DDevice::isRayTracingEnabled())
     {
-        // Draw In Texture
-        /*
-        test_rt->TransisitonState(g_defaultCommandList.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET);
-        g_defaultCommandList->OMSetRenderTargets(1, &test_rt->m_uiCPUHandle, false, nullptr);
-        g_defaultCommandList->ClearRenderTargetView(test_rt->m_uiCPUHandle, color, 0, NULL);
-        */
-
-        // Draw Models;
+        // Submit model to draw, 
         for (UINT i = 0; i < D3DMesh::s_MeshList.size(); i++)
         {
             g_D3DRayTracingScene.SubmitForDraw(&D3DMesh::s_MeshList[i]);
@@ -449,6 +442,7 @@ void RenderLoop()
         mainRT->TransisitonState(g_defaultCommandList.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         g_D3DRayTracingScene.setRenderTarget(mainRT->GetD3DTexture());
 
+        // Draw
         g_D3DRayTracingScene.DrawScene(g_defaultCommandList.Get());
         
         // Very dirty copy into the backbuffer
@@ -468,7 +462,7 @@ void RenderLoop()
 
         g_defaultCommandList->OMSetRenderTargets(1, &g_D3DBackBuffers[BackBufferIndex].m_uiCPUHandle, false, &mainDepth->m_uiCPUHandle);
         g_defaultCommandList->ClearRenderTargetView(g_D3DBackBuffers[BackBufferIndex].m_uiCPUHandle, color, 0, NULL);
-        g_defaultCommandList->ClearDepthStencilView(mainDepth->m_uiCPUHandle, D3D12_CLEAR_FLAG_DEPTH, 0, 0, 0, NULL);
+        g_defaultCommandList->ClearDepthStencilView(mainDepth->m_uiCPUHandle, D3D12_CLEAR_FLAG_DEPTH, 1, 0, 0, NULL);
 
         // Draw Models;
         for (UINT i = 0; i < D3DMesh::s_MeshList.size(); i++)
@@ -561,8 +555,8 @@ int main()
     g_D3DBufferManager.InitializeTexture(test_depth, g_ScreenResolution.width, g_ScreenResolution.height, DXGI_FORMAT_D32_FLOAT, true);
 
     g_D3DRenderTargetManager.InitializeRenderTargetFromTexture(mainRT, test_texture);
-
     g_D3DRenderTargetManager.InitializeDepthBufferFromTexture(mainDepth, test_depth);
+
     mainRT->SetDebugName(L"Main Render Target");
     mainDepth->SetDebugName(L"Main Depth");
 
