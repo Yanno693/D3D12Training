@@ -59,12 +59,14 @@ void D3DDevice::InitializeDevice()
         else
         {
             OutputDebugStringA("Create Device \n");
+            s_Device.Get()->SetName(L"D3D Raster Only Device");
             s_bIsRayTracingEnabled = false;
         }
     }
     else
     {
         OutputDebugStringA("Create Device for RayTracing \n");
+        s_Device.Get()->SetName(L"D3D Raster and Ray Tracing Device");
         s_bIsRayTracingEnabled = true;
     }
     //s_bIsRayTracingEnabled = false;

@@ -241,7 +241,6 @@ void initD3DCommandsStructs()
         OutputDebugStringA("Error : Command List \n");
         assert(0);
     }
-
     g_defaultCommandList->SetName(L"D3D Default Command List");
 
     if (!SUCCEEDED(g_defaultCommandList->Close()))
@@ -255,6 +254,7 @@ void initD3DCommandsStructs()
         OutputDebugStringA("Error : Fence Creation \n");
         assert(0);
     }
+    g_GPUFence.Get()->SetName(L"D3D GPU Fence");
 
     g_FenceEvent = CreateEvent(NULL, FALSE, FALSE, L"GPU Fence");
     if (g_FenceEvent == nullptr)
@@ -526,25 +526,23 @@ int main()
 
     g_D3DBufferManager.InitializeConstantBuffer(&g_SceneConstantBuffer, sizeof(_SceneData));
     g_SceneConstantBuffer.SetDebugName(L"Scene Constant Buffer");
+
     g_SceneData.oViewProjMatrix = DirectX::XMMatrixIdentity();
 
     D3DMesh oGroundMesh;
     D3DMesh oMesh;
     D3DMesh oMesh2;
     D3DMesh oMesh3;
-    //oMesh.Initialize("monkey", D3DDevice::s_device.Get());
+
     oGroundMesh.Initialize("ground", D3DDevice::s_Device.Get(), true);
     oMesh.Initialize("monkey", D3DDevice::s_Device.Get(), true);
     oMesh2.Initialize("monkey2", D3DDevice::s_Device.Get(), true);
     oMesh3.Initialize("monkeysmooth", D3DDevice::s_Device.Get(), true);
-    //oMesh.InitializeDebug(D3DDevice::s_device.Get());
-    //oMesh.InitializeDebug(D3DDevice::s_device.Get(), true);
 
     D3DMesh::s_MeshList.push_back(oGroundMesh);
     D3DMesh::s_MeshList.push_back(oMesh);
     D3DMesh::s_MeshList.push_back(oMesh2);
     D3DMesh::s_MeshList.push_back(oMesh3);
-
 
     test_texture = new D3DTexture;
     test_depth = new D3DTexture;

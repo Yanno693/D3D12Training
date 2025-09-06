@@ -14,6 +14,7 @@ float nrand(float2 uv)
     return frac(sin(dot(uv, float2(12.9898, 78.233))) * 43758.5453);
 }
 
+// Todo : Share between Raster and RT
 cbuffer SceneData : register(b0, space0)
 {
     float2 screenSize;
@@ -27,37 +28,24 @@ cbuffer InstanceData : register(b1, space0)
     float4x4 ModelMatrix;
 };
 
+// RT Only
 struct RTPayload
 {
     float4 color;
 };
 
+// RT Only
 struct OcclusionPayload
 {
     int iIsOccluded;
 };
 
+// Shader between Raster and RT
 struct Vertex
 {
     float3 position : POSITION;
     float3 normal : TEXCOORD;
 };
-
-/*
-float GetOcclusion()
-{
-    OcclusionPayload payloads[10];
-
-    float occlusion = 0;
-
-    for(int i = 0; i < 10; i++)
-    {
-
-    }
-    
-    return 0.0f;
-}
-*/
 
 float GetHardShadowOcclusion(RaytracingAccelerationStructure a_scene, float3 surface_normal)
 {
