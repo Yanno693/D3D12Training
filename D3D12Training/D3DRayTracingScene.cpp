@@ -175,7 +175,7 @@ void D3DRayTracingScene::CreateShaderIDBuffer()
 	auto& oHitShaderSet = g_D3DShaderManager.GetRTShaderSet(D3D_RT_SHADER_TYPE::HIT);
 
 	UINT uiBufferSize = D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT * (oRGShaderSet.size() + oMissShaderSet.size() + D3DMesh::s_MeshList.size() * 2) * 2;
-	// This * 2 at he end : I trible the size of the shader table to have 96 (really need 64) bits behind the shaders in the shader table, this will allow me to add a Local Root Signature Argument
+	// This * 2 at he end : I double the size of the shader table to have 96 (really need 64) bits behind the shaders in the shader table, this will allow me to add a Local Root Signature Argument
 
 	g_D3DBufferManager.InitializeGenericBuffer(&m_oSceneShaderIDBuffer, uiBufferSize);
 	m_oSceneShaderIDBuffer.SetDebugName(L"RT Scene Shader ID Buffer"); // You'll need to create the RT PSO to fill the shader id buffer of the identifiers
@@ -221,8 +221,8 @@ void D3DRayTracingScene::CreateShaderIDBuffer()
 		memcpy(apShaderIDData + (1 + oMissShaderSet.size() + 2 * iMesh + 1) * D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT * 2, pOcclusionShaderID, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
 	
 		// Setting/Binding Vertex and Index buffers to local root signature
-		D3D12_GPU_VIRTUAL_ADDRESS pVertexBufferGPUAddress = D3DMesh::s_MeshList[iMesh].m_oRTVertexBuffer.m_oBuffer.m_pResource.Get()->GetGPUVirtualAddress();
-		D3D12_GPU_VIRTUAL_ADDRESS pIndexBufferGPUAddress = D3DMesh::s_MeshList[iMesh].m_oRTIndexBuffer.m_oBuffer.m_pResource.Get()->GetGPUVirtualAddress();
+		D3D12_GPU_VIRTUAL_ADDRESS pVertexBufferGPUAddress = D3DMesh::s_MeshList[iMesh].m_oVertexBuffer.m_pResource.Get()->GetGPUVirtualAddress();
+		D3D12_GPU_VIRTUAL_ADDRESS pIndexBufferGPUAddress = D3DMesh::s_MeshList[iMesh].m_oIndexBuffer.m_pResource.Get()->GetGPUVirtualAddress();
 
 		memcpy(
 			apShaderIDData + ((1 + oMissShaderSet.size() + 2 * iMesh) * D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT * 2) + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES,

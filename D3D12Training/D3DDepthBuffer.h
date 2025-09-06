@@ -3,7 +3,7 @@
 #include "D3DIncludes.h"
 #include "D3DTexture.h"
 
-class D3DDepthBuffer // TODO : Lol it's the same a render target, so, factorize
+class D3DDepthBuffer // TODO : Lol it's the same as render target, so, factorize
 {
 	friend class D3DRenderTargetManager;
 

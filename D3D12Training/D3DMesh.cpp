@@ -403,45 +403,17 @@ void D3DMesh::CreateGPUBuffers()
 
 void D3DMesh::CreateRTGPUBuffers(ID3D12Device5* a_pDevice)
 {
-	if (!D3DDevice::isRayTracingEnabled())
-		return;
-
-	UINT uiVertexSize = m_oMeshPositionData.size + m_oMeshNormalData.size;
-	UINT uiVertexStride = m_oMeshPositionData.stride + m_oMeshNormalData.stride;
-	char* oVertexData = (char*)malloc(uiVertexSize);
-	assert(oVertexData != nullptr);
-
-	char* oVertexDataIt = oVertexData;
-
-	for (UINT i = 0; i < m_oMeshPositionData.count; i++)
-	{
-		memcpy(oVertexDataIt, m_oMeshPositionData.ptr + i * m_oMeshPositionData.stride, m_oMeshPositionData.stride);
-		memcpy(oVertexDataIt + m_oMeshPositionData.stride, m_oMeshNormalData.ptr + i * m_oMeshNormalData.stride, m_oMeshNormalData.stride);
-
-		oVertexDataIt += m_oMeshPositionData.stride + m_oMeshNormalData.stride;
-	}
-	
-	g_D3DBufferManager.InitializeGenericBuffer(&m_oRTVertexBuffer.m_oBuffer, uiVertexSize);
-	m_oRTVertexBuffer.m_oData.SizeInBytes = uiVertexSize;
-	m_oRTVertexBuffer.m_oData.StrideInBytes = uiVertexStride;
-	m_oRTVertexBuffer.WriteData(oVertexData, uiVertexSize);
-
-	g_D3DBufferManager.InitializeGenericBuffer(&m_oRTIndexBuffer.m_oBuffer, m_oMeshIndicesData.size);
-	m_oRTIndexBuffer.m_oData.SizeInBytes = m_oMeshIndicesData.size;
-	m_oRTIndexBuffer.m_oData.Format = (m_oMeshIndicesData.stride == sizeof(USHORT) ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT);
-	m_oRTIndexBuffer.WriteData(m_oMeshIndicesData.ptr, m_oMeshIndicesData.size);
-
 	// Create BVH
 	m_oBVHGeometry.Type = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
 	m_oBVHGeometry.Flags = D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE;
 	m_oBVHGeometry.Triangles.Transform3x4 = 0;
-	m_oBVHGeometry.Triangles.IndexFormat = m_oRTIndexBuffer.m_oData.Format;
+	m_oBVHGeometry.Triangles.IndexFormat = m_oIndexBuffer.m_oView.Format;
 	m_oBVHGeometry.Triangles.IndexCount = m_oMeshIndicesData.count;
-	m_oBVHGeometry.Triangles.IndexBuffer = m_oRTIndexBuffer.m_oBuffer.m_pResource.Get()->GetGPUVirtualAddress();
+	m_oBVHGeometry.Triangles.IndexBuffer = m_oIndexBuffer.m_pResource.Get()->GetGPUVirtualAddress();
 	m_oBVHGeometry.Triangles.VertexFormat = DXGI_FORMAT_R32G32B32_FLOAT;
 	m_oBVHGeometry.Triangles.VertexCount = m_oMeshPositionData.count;
-	m_oBVHGeometry.Triangles.VertexBuffer.StartAddress = m_oRTVertexBuffer.m_oBuffer.m_pResource.Get()->GetGPUVirtualAddress();
-	m_oBVHGeometry.Triangles.VertexBuffer.StrideInBytes = m_oRTVertexBuffer.m_oData.StrideInBytes;
+	m_oBVHGeometry.Triangles.VertexBuffer.StartAddress = m_oVertexBuffer.m_pResource.Get()->GetGPUVirtualAddress();
+	m_oBVHGeometry.Triangles.VertexBuffer.StrideInBytes = m_oVertexBuffer.m_oView.StrideInBytes;
 
 	m_oBVHInput.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL;
 	m_oBVHInput.Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
@@ -454,215 +426,10 @@ void D3DMesh::CreateRTGPUBuffers(ID3D12Device5* a_pDevice)
 
 	g_D3DBufferManager.InitializeGenericBuffer(&m_oBVH, (UINT)oBVHPreBuildInfo.ResultDataMaxSizeInBytes, true, D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE);
 	g_D3DBufferManager.InitializeGenericBuffer(&m_oBVHScratch, (UINT)oBVHPreBuildInfo.ScratchDataSizeInBytes, true);
-
-	free(oVertexData);
 }
 
-
-void D3DMesh::InitializeDebug(ID3D12Device5* a_pDevice, bool a_bUsesRayTracing)
+void D3DMesh::CreatePSO(ID3D12Device* a_pDevice)
 {
-	if (a_bUsesRayTracing)
-	{
-		// 1. Load Shader
-		m_pHitShader = (D3DHitShader*)g_D3DShaderManager.RequestRTShaderV2("basicsolidrt", D3D_RT_SHADER_TYPE::HIT);
-
-		// 2. Fill With something
-		_3DVertex vVertex[3] = {
-			{0, 0, 5.0f},
-			{0, 1, 5.0f},
-			{1, 0, 5.0f}
-		};
-
-		UINT32 vIndex[3] = { 0, 1, 2 };
-
-		m_uiTriangleCount = 1;
-
-		g_D3DBufferManager.InitializeGenericBuffer(&m_oRTVertexBuffer.m_oBuffer, sizeof(vVertex));
-		m_oRTVertexBuffer.m_oData.SizeInBytes = sizeof(vVertex);
-		m_oRTVertexBuffer.m_oData.StrideInBytes = sizeof(_3DVertex);
-		m_oRTVertexBuffer.WriteData(vVertex, sizeof(vVertex));
-		g_D3DBufferManager.InitializeGenericBuffer(&m_oRTIndexBuffer.m_oBuffer, sizeof(vIndex));
-		m_oRTIndexBuffer.m_oData.SizeInBytes = sizeof(vIndex);
-		m_oRTIndexBuffer.m_oData.Format = DXGI_FORMAT_R32_UINT;
-		m_oRTIndexBuffer.WriteData(vIndex, sizeof(vIndex));
-
-		// Create BVH
-		m_oBVHGeometry.Type = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
-		m_oBVHGeometry.Flags = D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE;
-		m_oBVHGeometry.Triangles.Transform3x4 = 0;
-		m_oBVHGeometry.Triangles.IndexFormat = m_oRTIndexBuffer.m_oData.Format;
-		m_oBVHGeometry.Triangles.IndexCount = 3 * m_uiTriangleCount;
-		m_oBVHGeometry.Triangles.IndexBuffer = m_oRTIndexBuffer.m_oBuffer.m_pResource.Get()->GetGPUVirtualAddress();
-		m_oBVHGeometry.Triangles.VertexFormat = DXGI_FORMAT_R32G32B32_FLOAT;
-		m_oBVHGeometry.Triangles.VertexCount = _countof(vVertex);
-		m_oBVHGeometry.Triangles.VertexBuffer.StartAddress = m_oRTVertexBuffer.m_oBuffer.m_pResource.Get()->GetGPUVirtualAddress();
-		m_oBVHGeometry.Triangles.VertexBuffer.StrideInBytes = m_oRTVertexBuffer.m_oData.StrideInBytes;
-
-		m_oBVHInput.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL;
-		m_oBVHInput.Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
-		m_oBVHInput.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
-		m_oBVHInput.NumDescs = 1;
-		m_oBVHInput.pGeometryDescs = &m_oBVHGeometry;
-
-		D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO oBVHPreBuildInfo;
-		a_pDevice->GetRaytracingAccelerationStructurePrebuildInfo(&m_oBVHInput,&oBVHPreBuildInfo);
-
-		g_D3DBufferManager.InitializeGenericBuffer(&m_oBVH, (UINT)oBVHPreBuildInfo.ResultDataMaxSizeInBytes, true, D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE);
-		m_oBVH.SetDebugName(L"BVH Buffer");
-		g_D3DBufferManager.InitializeGenericBuffer(&m_oBVHScratch, (UINT)oBVHPreBuildInfo.ScratchDataSizeInBytes, true);
-		m_oBVHScratch.SetDebugName(L"BVH Scratch Buffer");
-
-	}
-	else
-	{
-		// 1. Load shader
-		m_pShader = g_D3DShaderManager.RequestShader("basicsolid");
-
-		// 2. Fill With something
-		_3DVertex vVertex[3] = {
-			{0, 0, 5.0f},
-			{0, 1, 5.0f},
-			{1, 0, 5.0f}
-		};
-
-		UINT32 vIndex[3] = { 0, 1, 2 };
-
-		m_uiTriangleCount = 1;
-
-		g_D3DBufferManager.InitializeVertexBuffer(&m_oVertexBuffer, sizeof(vVertex), sizeof(_3DVertex));
-		m_oVertexBuffer.WriteData((void*)vVertex, sizeof(vVertex));
-		g_D3DBufferManager.InitializeIndexBuffer(&m_oIndexBuffer, sizeof(vIndex));
-		m_oIndexBuffer.WriteData((void*)vIndex, sizeof(vIndex));
-
-		// Set debug name
-		std::wstring ws(L"Debug Geometry");
-		std::wstringstream ss;
-		ss << ws << " Vertex Buffer";
-		m_oVertexBuffer.SetDebugName(ss.str().c_str());
-
-		// Create PSO
-
-		D3D12_INPUT_LAYOUT_DESC oInputLayoutDesc = {};
-		oInputLayoutDesc.NumElements = (UINT)m_pShader->m_vInputElements.size();
-		oInputLayoutDesc.pInputElementDescs = m_pShader->m_vInputElements.data();
-
-		D3D12_SHADER_BYTECODE oDxVs;
-		oDxVs.BytecodeLength = m_pShader->m_pVS->m_uiByteCodeSize;
-		oDxVs.pShaderBytecode = m_pShader->m_pVS->m_pByteCode;
-
-		D3D12_SHADER_BYTECODE oDxPs;
-		oDxPs.BytecodeLength = m_pShader->m_pPS->m_uiByteCodeSize;
-		oDxPs.pShaderBytecode = m_pShader->m_pPS->m_pByteCode;
-
-		D3D12_ROOT_PARAMETER oVBSceneRootParameter = {};
-		oVBSceneRootParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-		oVBSceneRootParameter.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-
-		D3D12_ROOT_PARAMETER oVBPerObjectRootParameter = {};
-		oVBPerObjectRootParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-		oVBPerObjectRootParameter.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-
-		D3D12_ROOT_PARAMETER pVBRootParameters[] = { oVBSceneRootParameter , oVBPerObjectRootParameter };
-
-		D3D12_ROOT_SIGNATURE_DESC rsDesc = {};
-		rsDesc.NumParameters = 1;
-		rsDesc.NumStaticSamplers = 0;
-		rsDesc.pStaticSamplers = NULL;
-		rsDesc.pParameters = pVBRootParameters; // TODO : Use a list, could be better
-		rsDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
-
-		Microsoft::WRL::ComPtr<ID3DBlob> rsBlob = nullptr;
-		Microsoft::WRL::ComPtr<ID3DBlob> errorBlob = nullptr;
-
-		D3D12SerializeRootSignature(&rsDesc, D3D_ROOT_SIGNATURE_VERSION_1, &rsBlob, &errorBlob);
-		if (errorBlob != nullptr)
-		{
-			void* d = errorBlob->GetBufferPointer();
-			int a = 1;
-			assert(0);
-		}
-
-		if (!SUCCEEDED(a_pDevice->CreateRootSignature(0, rsBlob->GetBufferPointer(), rsBlob->GetBufferSize(), IID_PPV_ARGS(&m_pRootSignature))))
-		{
-			OutputDebugStringA("Error : Create Empty Root signature\n");
-			assert(0);
-		}
-
-		D3D12_GRAPHICS_PIPELINE_STATE_DESC oPsoDesc = {};
-		oPsoDesc.InputLayout = oInputLayoutDesc;
-		oPsoDesc.NumRenderTargets = 1;
-		oPsoDesc.SampleDesc.Count = 1;
-		oPsoDesc.SampleMask = 0xFFFFFFFF;
-		oPsoDesc.RTVFormats[0] = DXGI_FORMAT_R16G16B16A16_FLOAT;
-		oPsoDesc.BlendState.RenderTarget[0].BlendEnable = true;
-		oPsoDesc.BlendState.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
-		oPsoDesc.BlendState.RenderTarget[0].BlendOp = D3D12_BLEND_OP_ADD;
-		oPsoDesc.BlendState.RenderTarget[0].BlendOpAlpha = D3D12_BLEND_OP_ADD;
-		oPsoDesc.BlendState.RenderTarget[0].SrcBlend = D3D12_BLEND_SRC_COLOR;
-		oPsoDesc.BlendState.RenderTarget[0].SrcBlendAlpha = D3D12_BLEND_ONE;
-		oPsoDesc.BlendState.RenderTarget[0].DestBlend = D3D12_BLEND_DEST_COLOR;
-		oPsoDesc.BlendState.RenderTarget[0].DestBlendAlpha = D3D12_BLEND_ZERO;
-
-		oPsoDesc.VS = oDxVs;
-		oPsoDesc.PS = oDxPs;
-		oPsoDesc.DepthStencilState.DepthEnable = false;
-		oPsoDesc.DepthStencilState.StencilEnable = false;
-		oPsoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_BACK;
-		oPsoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
-		oPsoDesc.pRootSignature = m_pRootSignature.Get();
-		oPsoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-
-		if (!SUCCEEDED(a_pDevice->CreateGraphicsPipelineState(&oPsoDesc, IID_PPV_ARGS(&m_pPso))))
-		{
-			std::stringstream sErrorSS;
-			sErrorSS << "Error : Pipeline state object compilation for debug object" << "\n";
-			OutputDebugStringA(sErrorSS.str().c_str());
-			assert(0);
-		}
-	}
-}
-
-void D3DMesh::Initialize(std::string a_sPath, ID3D12Device5* a_pDevice, bool a_bUsesRayTracing)
-{
-	std::stringstream sObjectPath;
-	std::stringstream sModelPathGLTF;
-	std::stringstream sModelPathGLTFBin;
-	sObjectPath << "./Objects/" << a_sPath << ".xml";
-	sModelPathGLTF << "./Models/" << a_sPath << ".gltf";
-	sModelPathGLTFBin << "./Models/" << a_sPath << ".bin";
-
-	assert(m_pShader == nullptr);
-	
-	ParseObject(sObjectPath.str());
-	ParseModelGLTF(m_szModelPath + ".gltf", m_szModelPath + ".bin");
-
-	CreateGPUBuffers();
-
-	// Set debug name
-	std::wstring ws(a_sPath.begin(), a_sPath.end());
-	std::wstringstream ssVertexBuffer;
-	ssVertexBuffer << ws << " Vertex Buffer";
-	std::wstringstream ssRTVertexBuffer;
-	m_oVertexBuffer.SetDebugName(ssVertexBuffer.str().c_str());
-
-	if (D3DDevice::isRayTracingEnabled())
-	{
-		CreateRTGPUBuffers(a_pDevice);
-
-		ssRTVertexBuffer << ws << " RT Vertex Buffer";
-		std::wstringstream ssRTIndexBuffer;
-		ssRTIndexBuffer << ws << " RT Index Buffer";
-		std::wstringstream ssRTBVH;
-		ssRTBVH << ws << " BVH";
-		std::wstringstream ssRTBVHScratch;
-		ssRTBVHScratch << ws << " BVH Scratch";
-
-		m_oRTVertexBuffer.SetDebugName(ssRTVertexBuffer.str().c_str());
-		m_oRTIndexBuffer.SetDebugName(ssRTIndexBuffer.str().c_str());
-		m_oBVH.SetDebugName(ssRTBVH.str().c_str());
-		m_oBVHScratch.SetDebugName(ssRTBVHScratch.str().c_str());
-	}
-
 	// Create PSO
 	D3D12_INPUT_LAYOUT_DESC oInputLayoutDesc = {};
 	oInputLayoutDesc.NumElements = (UINT)m_pShader->m_vInputElements.size();
@@ -744,14 +511,128 @@ void D3DMesh::Initialize(std::string a_sPath, ID3D12Device5* a_pDevice, bool a_b
 	oPsoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
 	oPsoDesc.pRootSignature = m_pRootSignature.Get();
 	oPsoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-	
+
 	if (!SUCCEEDED(a_pDevice->CreateGraphicsPipelineState(&oPsoDesc, IID_PPV_ARGS(&m_pPso))))
 	{
 		std::stringstream sErrorSS;
-		sErrorSS << "Error : Pipeline state object compilation for object " << a_sPath << "\n";
+		sErrorSS << "Error : Pipeline state object compilation for object " << m_szModelPath.c_str() << "\n";
 		OutputDebugStringA(sErrorSS.str().c_str());
 		assert(0);
 	}
+}
+
+
+void D3DMesh::InitializeDebug(ID3D12Device5* a_pDevice, bool a_bUsesRayTracing)
+{
+	// 1. Load Shader
+	m_pHitShader = (D3DHitShader*)g_D3DShaderManager.RequestRTShaderV2("basicsolidrt", D3D_RT_SHADER_TYPE::HIT);
+	m_pShader = g_D3DShaderManager.RequestShader("basicsolid");
+	m_szModelPath = "Debug Geoetry";
+
+	m_uiIndicesCount = 3;
+	m_uiTriangleCount = 1;
+
+	m_oMeshPositionData.size = sizeof(float) * 3 * 3;
+	m_oMeshPositionData.stride = sizeof(float) * 3;
+	m_oMeshPositionData.ptr = new char[m_oMeshPositionData.size];
+	m_oMeshPositionData.count = 3;
+
+	m_oMeshNormalData.size = sizeof(float) * 3 * 3;
+	m_oMeshNormalData.stride = sizeof(float) * 3;
+	m_oMeshNormalData.ptr = new char[m_oMeshNormalData.size];
+	m_oMeshNormalData.count = 3;
+
+	m_oMeshIndicesData.size = sizeof(UINT16) * 3;
+	m_oMeshIndicesData.stride = sizeof(UINT16);
+	m_oMeshIndicesData.ptr = new char[m_oMeshIndicesData.size];
+	m_oMeshIndicesData.count = 3;
+
+	m_oTransform.position.x = 0;
+	m_oTransform.position.y = 0;
+	m_oTransform.position.z = 0;
+
+	m_oTransform.rotation.x = 0;
+	m_oTransform.rotation.y = 0;
+	m_oTransform.rotation.z = 0;
+
+	m_oTransform.scale.x = 1;
+	m_oTransform.scale.y = 1;
+	m_oTransform.scale.z = 1;
+
+	float pos[9] = {
+		0, 0, 5.0f,
+		0, 1, 5.0f,
+		1, 0, 5.0f
+	};
+
+	float normal[9] = {
+		0, 0, 1.0f,
+		0, 0, 1.0f,
+		0, 0, 1.0f
+	};
+
+	UINT16 vIndex[3] = { 0, 1, 2 };
+
+	memcpy(m_oMeshPositionData.ptr, pos, sizeof(pos));
+	memcpy(m_oMeshNormalData.ptr, normal, sizeof(normal));
+	memcpy(m_oMeshIndicesData.ptr, vIndex, sizeof(vIndex));
+
+	CreateGPUBuffers();
+
+	// Set debug name
+	m_oVertexBuffer.SetDebugName(L"Debug Geometry Vertex Buffer");
+	m_oIndexBuffer.SetDebugName(L"Debug Geometry Index Buffer");
+
+	if (D3DDevice::isRayTracingEnabled())
+	{
+		CreateRTGPUBuffers(a_pDevice);
+
+		m_oBVH.SetDebugName(L"Debug Geometry BVH");
+		m_oBVHScratch.SetDebugName(L"Debug Geometry BVH Scratch");
+	}
+
+	CreatePSO(a_pDevice);
+}
+
+void D3DMesh::Initialize(std::string a_sPath, ID3D12Device5* a_pDevice, bool a_bUsesRayTracing)
+{
+	std::stringstream sObjectPath;
+	std::stringstream sModelPathGLTF;
+	std::stringstream sModelPathGLTFBin;
+	sObjectPath << "./Objects/" << a_sPath << ".xml";
+	sModelPathGLTF << "./Models/" << a_sPath << ".gltf";
+	sModelPathGLTFBin << "./Models/" << a_sPath << ".bin";
+
+	assert(m_pShader == nullptr);
+	
+	ParseObject(sObjectPath.str());
+	ParseModelGLTF(m_szModelPath + ".gltf", m_szModelPath + ".bin");
+
+	CreateGPUBuffers();
+
+	// Set debug name
+	std::wstring ws(a_sPath.begin(), a_sPath.end());
+	std::wstringstream ssVertexBuffer;
+	std::wstringstream ssIndexBuffer;
+	ssVertexBuffer << ws << " Vertex Buffer";
+	ssIndexBuffer << ws << " Index Buffer";
+	m_oVertexBuffer.SetDebugName(ssVertexBuffer.str().c_str());
+	m_oIndexBuffer.SetDebugName(ssIndexBuffer.str().c_str());
+
+	if (D3DDevice::isRayTracingEnabled())
+	{
+		CreateRTGPUBuffers(a_pDevice);
+
+		std::wstringstream ssRTBVH;
+		ssRTBVH << ws << " BVH";
+		std::wstringstream ssRTBVHScratch;
+		ssRTBVHScratch << ws << " BVH Scratch";
+
+		m_oBVH.SetDebugName(ssRTBVH.str().c_str());
+		m_oBVHScratch.SetDebugName(ssRTBVHScratch.str().c_str());
+	}
+
+	CreatePSO(a_pDevice);
 }
 
 void D3DMesh::Draw(ID3D12GraphicsCommandList* a_pCommandList)
@@ -794,36 +675,9 @@ void D3DMesh::Draw(ID3D12GraphicsCommandList* a_pCommandList)
 	a_pCommandList->RSSetViewports(1, &viewport);
 	a_pCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	a_pCommandList->SetPipelineState(m_pPso.Get());
-	//a_pCommandList->DrawInstanced(3 * m_uiTriangleCount, 1, 0, 0);
 
-	if (m_uiIndicesCount != 0)
-	{
-		a_pCommandList->DrawIndexedInstanced(m_uiIndicesCount, 1, 0, 0, 0);
-	}
-	else
-	{
-		a_pCommandList->DrawInstanced(3 * m_uiTriangleCount, 1, 0, 0);
-	}
-}
-
-void D3DMesh::DrawRT(ID3D12GraphicsCommandList4* a_pCommandList)
-{
-	/*
-	a_pCommandList->SetPipelineState1(m_pRayTracingPso.Get());
-
-	D3D12_DISPATCH_RAYS_DESC oRayDispatch = {};
-	oRayDispatch.RayGenerationShaderRecord.SizeInBytes = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
-	oRayDispatch.RayGenerationShaderRecord.StartAddress = m_oShaderIDBuffer.m_pResource.Get()->GetGPUVirtualAddress();
-	oRayDispatch.MissShaderTable.SizeInBytes = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
-	oRayDispatch.MissShaderTable.StartAddress = m_oShaderIDBuffer.m_pResource.Get()->GetGPUVirtualAddress() + 1 * D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT;
-	oRayDispatch.HitGroupTable.SizeInBytes = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
-	oRayDispatch.HitGroupTable.StartAddress = m_oShaderIDBuffer.m_pResource.Get()->GetGPUVirtualAddress() + 2 * D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT;
-	oRayDispatch.Width = 1280;
-	oRayDispatch.Height = 720;
-	oRayDispatch.Depth = 1;
-
-	a_pCommandList->DispatchRays(&oRayDispatch);
-	*/
+	assert(m_uiIndicesCount > 0);
+	a_pCommandList->DrawIndexedInstanced(m_uiIndicesCount, 1, 0, 0, 0);
 }
 
 void D3DMesh::SetPosition(const GamePosition& a_rPosition)

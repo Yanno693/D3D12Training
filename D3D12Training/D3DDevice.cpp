@@ -67,7 +67,7 @@ void D3DDevice::InitializeDevice()
         OutputDebugStringA("Create Device for RayTracing \n");
         s_bIsRayTracingEnabled = true;
     }
-    s_bIsRayTracingEnabled = false;
+    //s_bIsRayTracingEnabled = false;
 
     // Initialize context
 

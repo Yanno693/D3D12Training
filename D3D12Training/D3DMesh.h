@@ -38,6 +38,7 @@ private:
 
 	void CreateGPUBuffers();
 	void CreateRTGPUBuffers(ID3D12Device5* a_pDevice);
+	void CreatePSO(ID3D12Device* a_pDevice);
 
 	ExtraPtr m_oMeshPositionData = {};
 	ExtraPtr m_oMeshUVData = {};
@@ -62,8 +63,6 @@ public:
 	D3DShaderPair* m_pShader = nullptr;
 
 	// Ray Tracing Stuff
-	D3DRayTracingVertexBuffer m_oRTVertexBuffer; // Vertex Buffer the Mesh for ray tracing
-	D3DRayTracingIndexBuffer m_oRTIndexBuffer; // Index buffer ot the mesh
 	D3DGenericBuffer m_oBVH; // "Bottom Level Acceleration Stucture", basically a sort of BVH
 	D3DGenericBuffer m_oBVHScratch; // "Bottom Level Acceleration Stucture" but for updating ?
 	D3D12_RAYTRACING_GEOMETRY_DESC m_oBVHGeometry = {};
@@ -71,10 +70,16 @@ public:
 
 	D3DHitShader* m_pHitShader = nullptr;
 
-	void Initialize(std::string const a_sPath, ID3D12Device5* a_pDevice, bool a_bUsesRayTracing = false);
+	/*
+	* Iniitialize a mesh with a single triangle
+	*/
 	void InitializeDebug(ID3D12Device5* a_pDevice, bool a_bUsesRayTracing = false);
+
+	/*
+	* Iniitialize a mesh from model in path
+	*/
+	void Initialize(std::string const a_sPath, ID3D12Device5* a_pDevice, bool a_bUsesRayTracing = false);
 	void Draw(ID3D12GraphicsCommandList* a_pCommandList);
-	void DrawRT(ID3D12GraphicsCommandList4* a_pCommandList);
 
 	void SetPosition(const GamePosition& a_rPosition);
 	GamePosition GetPosition();
