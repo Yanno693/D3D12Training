@@ -36,6 +36,6 @@ void basicsolidrt_hit(inout RTPayload payload, BuiltInTriangleIntersectionAttrib
     //float3 hitColor = normal;
 
     //payload.color = float4(0,0,1,0) * (1.0f - f);
-    //payload.color = float4(normal, 0) * (1.0f - f);
-    payload.color = float4(normal, 0);
+    payload.color = float4(normal, 0) * (1.0f - f);
+    //payload.color = float4(normal, 0);
 }
