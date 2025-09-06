@@ -431,6 +431,8 @@ void RenderLoop()
     g_SceneData.oScreenSize.y = (float)g_ScreenResolution.height;
     g_SceneConstantBuffer.WriteData(&g_SceneData, sizeof(g_SceneData));
 
+    g_SceneData.oDirectionalLight.angle.z = (cos(GetElapsedTime() * 0.5f) * 1.5f); // TODO : Normalize the angle
+
     if (D3DDevice::isRayTracingEnabled())
     {
         // Submit model to draw, 
@@ -528,6 +530,12 @@ int main()
     g_SceneConstantBuffer.SetDebugName(L"Scene Constant Buffer");
 
     g_SceneData.oViewProjMatrix = DirectX::XMMatrixIdentity();
+    g_SceneData.oDirectionalLight.color.r = 1;
+    g_SceneData.oDirectionalLight.color.g = 1;
+    g_SceneData.oDirectionalLight.color.b = 1;
+    g_SceneData.oDirectionalLight.angle.x = -1; // TODO : Normalize the angle
+    g_SceneData.oDirectionalLight.angle.y = -1; // TODO : Normalize the angle
+    g_SceneData.oDirectionalLight.angle.z = -1; // TODO : Normalize the angle
 
     D3DMesh oGroundMesh;
     D3DMesh oMesh;

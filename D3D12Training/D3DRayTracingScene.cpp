@@ -20,13 +20,6 @@ void D3DRayTracingScene::Initialize(ID3D12Device5* a_pDevice)
 
 void D3DRayTracingScene::LoadSceneDefaultShaders()
 {
-	// Should i keep these ?
-	/*
-	m_oSceneRGShader = static_cast<D3DRayGenerationShader*>(g_D3DShaderManager.RequestRTShaderV2("default", RAYGEN));
-	m_oSceneMissShader = static_cast<D3DMissShader*>(g_D3DShaderManager.RequestRTShaderV2("default", MISS));
-	m_oSceneMissShader2 = static_cast<D3DMissShader*>(g_D3DShaderManager.RequestRTShaderV2("default2", MISS));
-	*/
-
 	// Do NOT change the loading order
 	g_D3DShaderManager.RequestRTShaderV2("default", RAYGEN);
 	g_D3DShaderManager.RequestRTShaderV2("occlusion", MISS);

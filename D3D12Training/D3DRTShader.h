@@ -68,11 +68,11 @@ public:
 * 0 : Scene Ray Generation Shader
 * 
 * Miss table shaders :
-* 0 : AO miss (for AO for example) // TODO : Make AO Shaders
+* 0 : Occlusion miss (for AO for example)
 * 1 : Skybox
 * 
 * Hit table Shaders :
 * For Each Mesh :
 *	0 : Mesh Albedo Shader
-*	1 : AO Hit Shader
+*	1 : Occlusion Hit Shader
 */

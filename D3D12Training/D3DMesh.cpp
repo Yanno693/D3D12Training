@@ -505,7 +505,6 @@ void D3DMesh::CreatePSO(ID3D12Device* a_pDevice)
 
 	oPsoDesc.VS = oDxVs;
 	oPsoDesc.PS = oDxPs;
-	//oPsoDesc.DepthStencilState.DepthEnable = false;
 	oPsoDesc.DepthStencilState.StencilEnable = false;
 	oPsoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_BACK;
 	oPsoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
@@ -527,7 +526,7 @@ void D3DMesh::InitializeDebug(ID3D12Device5* a_pDevice, bool a_bUsesRayTracing)
 	// 1. Load Shader
 	m_pHitShader = (D3DHitShader*)g_D3DShaderManager.RequestRTShaderV2("basicsolidrt", D3D_RT_SHADER_TYPE::HIT);
 	m_pShader = g_D3DShaderManager.RequestShader("basicsolid");
-	m_szModelPath = "Debug Geoetry";
+	m_szModelPath = "Debug Geometry";
 
 	m_uiIndicesCount = 3;
 	m_uiTriangleCount = 1;
@@ -654,9 +653,7 @@ void D3DMesh::Draw(ID3D12GraphicsCommandList* a_pCommandList)
 	a_pCommandList->SetGraphicsRootSignature(m_pRootSignature.Get());
 
 	a_pCommandList->SetGraphicsRootConstantBufferView(0, g_SceneConstantBuffer.m_pResource->GetGPUVirtualAddress());
-	a_pCommandList->SetGraphicsRootConstantBufferView(1, m_oInstanceBuffer.m_pResource->GetGPUVirtualAddress()); // Todo : implement instance buffer
-	//a_pCommandList->SetGraphicsRootDescriptorTable(0, g_SceneConstantBuffer.m_eGPUHandle);
-
+	a_pCommandList->SetGraphicsRootConstantBufferView(1, m_oInstanceBuffer.m_pResource->GetGPUVirtualAddress());
 
 	D3D12_RECT rect;
 	rect.left = 0;
