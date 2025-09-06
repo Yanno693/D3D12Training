@@ -32,10 +32,14 @@ void basicsolidrt_hit(inout RTPayload payload, BuiltInTriangleIntersectionAttrib
 
     float f = GetHardShadowOcclusion(scene, normal);
 
+    float3 lightDirection = normalize(float3(1, 1, 1)) * - 1.0f; // TODO : Get light direction and color from constant buffer
+
+    float diffuseFactor = max(0.0f, dot(-lightDirection, normal));
+
     //float3 hitColor = A * barycentrics.x + B * barycentrics.y + C * barycentrics.z;
     //float3 hitColor = normal;
 
     //payload.color = float4(0,0,1,0) * (1.0f - f);
-    payload.color = float4(normal, 0) * (1.0f - f);
+    payload.color = float4(normal, 0) * (1.0f - f) * diffuseFactor;
     //payload.color = float4(normal, 0);
 }

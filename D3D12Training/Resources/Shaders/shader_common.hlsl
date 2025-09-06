@@ -52,10 +52,10 @@ float GetHardShadowOcclusion(RaytracingAccelerationStructure a_scene, float3 sur
     OcclusionPayload payLoad;
 
     RayDesc ray;
-    ray.Origin = WorldRayOrigin() + WorldRayDirection() * RayTCurrent() - surface_normal * 0.001;
+    ray.Origin = WorldRayOrigin() + WorldRayDirection() * RayTCurrent() + surface_normal * 0.001;
 
-    ray.Direction = normalize(float3(1, 1, 1)); // TODO : Get normal of the triangle or something
-    ray.TMin = 0.01;
+    ray.Direction = normalize(float3(1, 1, 1)); // TODO : Get directional light direction from constant buffer
+    ray.TMin = 0.0001;
     ray.TMax = 1000;
 
     payLoad.iIsOccluded = 0;

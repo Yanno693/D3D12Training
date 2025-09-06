@@ -164,7 +164,7 @@ void D3DRayTracingScene::CreateBVH(ID3D12GraphicsCommandList4* a_pCommandList)
 
 	a_pCommandList->BuildRaytracingAccelerationStructure(&oBVHBuildDesc, 0, nullptr);
 
-	m_oBVHScratch.WaitForUAV(a_pCommandList);
+	m_oBVH.WaitForUAV(a_pCommandList);
 }
 
 void D3DRayTracingScene::CreateShaderIDBuffer()
