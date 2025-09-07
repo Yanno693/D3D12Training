@@ -1,10 +1,12 @@
 #include "D3DDevice.h"
 
+bool D3DDevice::s_bIsRayTracingEnabled;
 Microsoft::WRL::ComPtr<ID3D12Debug1>  D3DDevice::s_debugDevice;
 Microsoft::WRL::ComPtr<IDXGIFactory4> D3DDevice::s_factory;
 Microsoft::WRL::ComPtr<IDXGIAdapter1> D3DDevice::s_adapter;
-Microsoft::WRL::ComPtr<ID3D12Device5>  D3DDevice::s_Device;
-bool D3DDevice::s_bIsRayTracingEnabled;
+Microsoft::WRL::ComPtr<ID3D12Device5>  D3DDevice::s_device;
+Microsoft::WRL::ComPtr<IDXGISwapChain3> D3DDevice::s_swapchain;
+Microsoft::WRL::ComPtr<IDXGISwapChain1> D3DDevice::s_swapchain1;
 
 bool D3DDevice::isRayTracingEnabled()
 {
@@ -49,9 +51,9 @@ void D3DDevice::InitializeDevice()
     s_factory->EnumAdapters1(finalAdapterID, &s_adapter);
 
     // Create device finally
-    if (!SUCCEEDED(D3D12CreateDevice(s_adapter.Get(), D3D_FEATURE_LEVEL_12_2, IID_PPV_ARGS(&s_Device))))
+    if (!SUCCEEDED(D3D12CreateDevice(s_adapter.Get(), D3D_FEATURE_LEVEL_12_2, IID_PPV_ARGS(&s_device))))
     {
-        if (!SUCCEEDED(D3D12CreateDevice(s_adapter.Get(), D3D_FEATURE_LEVEL_12_0, IID_PPV_ARGS(&s_Device))))
+        if (!SUCCEEDED(D3D12CreateDevice(s_adapter.Get(), D3D_FEATURE_LEVEL_12_0, IID_PPV_ARGS(&s_device))))
         {
             OutputDebugStringA("Error : Create Device \n");
             assert(0);
@@ -59,14 +61,14 @@ void D3DDevice::InitializeDevice()
         else
         {
             OutputDebugStringA("Create Device \n");
-            s_Device.Get()->SetName(L"D3D Raster Only Device");
+            s_device.Get()->SetName(L"D3D Raster Only Device");
             s_bIsRayTracingEnabled = false;
         }
     }
     else
     {
         OutputDebugStringA("Create Device for RayTracing \n");
-        s_Device.Get()->SetName(L"D3D Raster and Ray Tracing Device");
+        s_device.Get()->SetName(L"D3D Raster and Ray Tracing Device");
         s_bIsRayTracingEnabled = true;
     }
     //s_bIsRayTracingEnabled = false;
@@ -75,13 +77,12 @@ void D3DDevice::InitializeDevice()
 
 }
 
-void D3DDevice::InitializeSwapchain(UINT const a_uiWidth, UINT const a_uiHeight)
+void D3DDevice::InitializeSwapchain(UINT const a_uiWidth, UINT const a_uiHeight, HWND a_oWindowHandle, ID3D12CommandQueue* const a_pCommandQueue)
 {
-    /*
     DXGI_SWAP_CHAIN_DESC1 desc = {};
     desc.Width = a_uiWidth;
     desc.Height = a_uiHeight;
-    desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    desc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
     desc.SampleDesc.Count = 1; // No-Antialiasing because 1 sample, also not usable with FLIP_DISCARD ?
     desc.SampleDesc.Quality = 0;
     desc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
@@ -91,10 +92,12 @@ void D3DDevice::InitializeSwapchain(UINT const a_uiWidth, UINT const a_uiHeight)
     desc.AlphaMode = DXGI_ALPHA_MODE_UNSPECIFIED;
     desc.Stereo = FALSE;
 
-    if (!SUCCEEDED(D3DDevice::s_factory->CreateSwapChainForHwnd(g_commandQueue.Get(), g_windowHandle, &desc, NULL, NULL, &g_swapchain)))
+    if (!SUCCEEDED(D3DDevice::s_factory->CreateSwapChainForHwnd(a_pCommandQueue, a_oWindowHandle, &desc, NULL, NULL, &s_swapchain1)))
     {
         OutputDebugStringA("Error : Create SwapChain \n");
         assert(0);
     }
-    */
+
+    s_swapchain1->QueryInterface(s_swapchain.GetAddressOf());
+    s_swapchain1->Release();
 }

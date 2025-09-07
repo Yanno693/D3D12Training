@@ -215,7 +215,7 @@ HANDLE g_FenceEvent;
 void initD3DCommandsStructs()
 {
     // Command Allocator
-    if (!SUCCEEDED(D3DDevice::s_Device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&g_commandAllocator))))
+    if (!SUCCEEDED(D3DDevice::s_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&g_commandAllocator))))
     {
         OutputDebugStringA("Error : Command Allocator \n");
         assert(0);
@@ -228,7 +228,7 @@ void initD3DCommandsStructs()
     desc.Priority = D3D12_COMMAND_QUEUE_PRIORITY::D3D12_COMMAND_QUEUE_PRIORITY_NORMAL;
     desc.Flags = D3D12_COMMAND_QUEUE_FLAGS::D3D12_COMMAND_QUEUE_FLAG_NONE;
     desc.NodeMask = 0;
-    if (!SUCCEEDED(D3DDevice::s_Device->CreateCommandQueue(&desc, IID_PPV_ARGS(&g_commandQueue))))
+    if (!SUCCEEDED(D3DDevice::s_device->CreateCommandQueue(&desc, IID_PPV_ARGS(&g_commandQueue))))
     {
         OutputDebugStringA("Error : Command Queue \n");
         assert(0);
@@ -236,7 +236,7 @@ void initD3DCommandsStructs()
     g_commandQueue->SetName(L"D3D Command Queue");
 
     // Direct Command List 
-    if (!SUCCEEDED(D3DDevice::s_Device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, g_commandAllocator.Get(), NULL, IID_PPV_ARGS(&g_defaultCommandList))))
+    if (!SUCCEEDED(D3DDevice::s_device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, g_commandAllocator.Get(), NULL, IID_PPV_ARGS(&g_defaultCommandList))))
     {
         OutputDebugStringA("Error : Command List \n");
         assert(0);
@@ -249,7 +249,7 @@ void initD3DCommandsStructs()
         assert(0);
     }
 
-    if (!SUCCEEDED(D3DDevice::s_Device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&g_GPUFence))))
+    if (!SUCCEEDED(D3DDevice::s_device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&g_GPUFence))))
     {
         OutputDebugStringA("Error : Fence Creation \n");
         assert(0);
@@ -304,54 +304,20 @@ void createD3DWindow(UINT const a_uiWidth, UINT const a_uiHeight)
     ShowWindow(g_windowHandle, SW_SHOW);
 }
 
-Microsoft::WRL::ComPtr<IDXGISwapChain3> g_swapchain;
-Microsoft::WRL::ComPtr<IDXGISwapChain1> g_swapchain1;
-
-void initD3DSwapchain(UINT const a_uiWidth, UINT const a_uiHeight)
-{
-    DXGI_SWAP_CHAIN_DESC1 desc = {};
-    desc.Width = a_uiWidth;
-    desc.Height = a_uiHeight;
-    desc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
-    desc.SampleDesc.Count = 1; // No-Antialiasing because 1 sample, also not usable with FLIP_DISCARD ?
-    desc.SampleDesc.Quality = 0;
-    desc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
-    desc.BufferUsage = DXGI_USAGE_BACK_BUFFER;
-    desc.BufferCount = 2;
-    desc.Scaling = DXGI_SCALING_STRETCH;
-    desc.AlphaMode = DXGI_ALPHA_MODE_UNSPECIFIED;
-    desc.Stereo = FALSE;
-
-    if (!SUCCEEDED(D3DDevice::s_factory->CreateSwapChainForHwnd(g_commandQueue.Get(), g_windowHandle, &desc, NULL, NULL, &g_swapchain1)))
-    {
-        OutputDebugStringA("Error : Create SwapChain \n");
-        assert(0);
-    }
-
-    g_swapchain1->QueryInterface(g_swapchain.GetAddressOf());
-    g_swapchain1->Release();
-}
-
 D3DRenderTarget g_D3DBackBuffers[2];
 UINT BackBufferIndex = 0;
-UINT g_RTRSizeInHeap = 0;
-
-void initD3DHeapStructs()
-{
-
-}
 
 void initD3DRenderTargets()
 {
-    g_D3DRenderTargetManager.Initialize(D3DDevice::s_Device.Get(), 1000);
+    g_D3DRenderTargetManager.Initialize(D3DDevice::s_device.Get(), 1000);
     g_D3DRenderTargetManager.SetDebugName(L"Render Target Manager Decriptor Heap");
-    if (!SUCCEEDED(g_swapchain->GetBuffer(0, IID_PPV_ARGS(&g_D3DBackBuffers[0].m_pResource))))
+    if (!SUCCEEDED(D3DDevice::s_swapchain->GetBuffer(0, IID_PPV_ARGS(&g_D3DBackBuffers[0].m_pResource))))
     {
         OutputDebugStringA("Error : Get Surface Buffer 0 \n");
         assert(0);
     }
 
-    if (!SUCCEEDED(g_swapchain->GetBuffer(1, IID_PPV_ARGS(&g_D3DBackBuffers[1].m_pResource))))
+    if (!SUCCEEDED(D3DDevice::s_swapchain->GetBuffer(1, IID_PPV_ARGS(&g_D3DBackBuffers[1].m_pResource))))
     {
         OutputDebugStringA("Error : Get Surface Buffer 1 \n");
         assert(0);
@@ -490,7 +456,7 @@ void RenderEnd()
 
     g_D3DRayTracingScene.FlushRTScene();
 
-    if (!SUCCEEDED(g_swapchain->Present(1, 0)))
+    if (!SUCCEEDED(D3DDevice::s_swapchain->Present(1, 0)))
     {
         OutputDebugStringA("Error : Swapchain Present \n");
         assert(0);
@@ -518,13 +484,15 @@ int main()
     initD3DCommandsStructs();
 
     createD3DWindow(g_ScreenResolution.width, g_ScreenResolution.height);
-    initD3DSwapchain(g_ScreenResolution.width, g_ScreenResolution.height);
-    initD3DHeapStructs();
+
+    //initD3DSwapchain(g_ScreenResolution.width, g_ScreenResolution.height);
+    D3DDevice::InitializeSwapchain(g_ScreenResolution.width, g_ScreenResolution.height, g_windowHandle, g_commandQueue.Get());
+
     initD3DRenderTargets();
 
-    g_D3DBufferManager.Initialize(D3DDevice::s_Device.Get(), 20000);
+    g_D3DBufferManager.Initialize(D3DDevice::s_device.Get(), 20000);
     g_D3DBufferManager.SetDebugName(L"SRV Descriptor Heap");
-    g_D3DRayTracingScene.Initialize(D3DDevice::s_Device.Get());
+    g_D3DRayTracingScene.Initialize(D3DDevice::s_device.Get());
 
     g_D3DBufferManager.InitializeConstantBuffer(&g_SceneConstantBuffer, sizeof(_SceneData));
     g_SceneConstantBuffer.SetDebugName(L"Scene Constant Buffer");
@@ -542,10 +510,10 @@ int main()
     D3DMesh oMesh2;
     D3DMesh oMesh3;
 
-    oGroundMesh.Initialize("ground", D3DDevice::s_Device.Get(), true);
-    oMesh.Initialize("monkey", D3DDevice::s_Device.Get(), true);
-    oMesh2.Initialize("monkey2", D3DDevice::s_Device.Get(), true);
-    oMesh3.Initialize("monkeysmooth", D3DDevice::s_Device.Get(), true);
+    oGroundMesh.Initialize("ground", D3DDevice::s_device.Get(), true);
+    oMesh.Initialize("monkey", D3DDevice::s_device.Get(), true);
+    oMesh2.Initialize("monkey2", D3DDevice::s_device.Get(), true);
+    oMesh3.Initialize("monkeysmooth", D3DDevice::s_device.Get(), true);
 
     D3DMesh::s_MeshList.push_back(oGroundMesh);
     D3DMesh::s_MeshList.push_back(oMesh);

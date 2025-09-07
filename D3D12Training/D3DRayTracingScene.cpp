@@ -105,7 +105,7 @@ void D3DRayTracingScene::CreateBVH(ID3D12GraphicsCommandList4* a_pCommandList)
 	g_D3DBufferManager.InitializeGenericBuffer(&m_oInstanceUpdateBuffer, (UINT)(sizeof(D3D12_RAYTRACING_INSTANCE_DESC) * m_apCurrentSceneMesh.size()));
 	m_oInstanceUpdateBuffer.SetDebugName(L"RT Scene Instance Buffer Update");
 
-	CreateGlobalRayTracingPSO(D3DDevice::s_Device.Get());
+	CreateGlobalRayTracingPSO(D3DDevice::s_device.Get());
 	CreateShaderIDBuffer();
 
 	D3D12_RAYTRACING_INSTANCE_DESC* pInstancesData = (D3D12_RAYTRACING_INSTANCE_DESC*)malloc(sizeof(D3D12_RAYTRACING_INSTANCE_DESC) * m_apCurrentSceneMesh.size());
