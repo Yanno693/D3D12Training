@@ -11,6 +11,8 @@
 #include "D3DDevice.h"
 #include "D3DRenderTargetManager.h"
 
+#include "ShaderShared.h"
+
 #include <Xinput.h>
 
 D3DRenderTargetManager g_D3DRenderTargetManager;
@@ -367,7 +369,7 @@ void RenderBegin()
     }
 }
 
-_SceneData g_SceneData;
+GameSceneData g_SceneData;
 
 void RenderLoop()
 {
@@ -494,7 +496,7 @@ int main()
     g_D3DBufferManager.SetDebugName(L"SRV Descriptor Heap");
     g_D3DRayTracingScene.Initialize(D3DDevice::s_device.Get());
 
-    g_D3DBufferManager.InitializeConstantBuffer(&g_SceneConstantBuffer, sizeof(_SceneData));
+    g_D3DBufferManager.InitializeConstantBuffer(&g_SceneConstantBuffer, sizeof(GameSceneData));
     g_SceneConstantBuffer.SetDebugName(L"Scene Constant Buffer");
 
     g_SceneData.oViewProjMatrix = DirectX::XMMatrixIdentity();

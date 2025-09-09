@@ -20,8 +20,6 @@
 #include <d3d12sdklayers.h>
 #include <wrl.h>
 
-#include "GameIncludes.h"
-
 static size_t GetSizeFromDXGIFormat(DXGI_FORMAT fmt)
 {
     switch (static_cast<int>(fmt))

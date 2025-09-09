@@ -2,16 +2,6 @@
 
 #include <DirectXMath.h>
 
-struct _2DVertex
-{
-	float x, y;
-};
-
-struct _3DVertex
-{
-	float x, y, z;
-};
-
 struct GamePosition
 {
 	float x, y, z;
@@ -40,6 +30,7 @@ struct GameTransform
 	GameScale scale;
 };
 
+/*
 struct GamePointLight
 {
 	GamePosition position;
@@ -52,6 +43,7 @@ struct GameDirectionalLight
 	GameColor color;
 	GameRotation angle;
 };
+*/
 
 struct GameCamera
 {
@@ -63,7 +55,8 @@ struct GameScreenResolution
 	UINT width, height;
 };
 
-struct _SceneData
+/*
+struct GameSceneData
 {
 	DirectX::XMFLOAT2 oScreenSize;
 	DirectX::XMMATRIX oViewProjMatrix;
@@ -71,6 +64,7 @@ struct _SceneData
 	DirectX::XMMATRIX oInvViewMatrix;
 	GameDirectionalLight oDirectionalLight;
 };
+*/
 
 struct _ObjectData
 {

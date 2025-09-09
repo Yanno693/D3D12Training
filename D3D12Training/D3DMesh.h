@@ -8,6 +8,8 @@
 #include "D3DShaderManager.h"
 #include "D3DBufferManager.h"
 
+#include "ShaderShared.h"
+
 #include "tinyxml2.h"
 
 struct ExtraPtr

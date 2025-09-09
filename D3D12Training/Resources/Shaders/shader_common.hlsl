@@ -1,3 +1,5 @@
+#include "../../ShaderShared.h" // Shared types between C++ and HLSL
+
 #define D3DCOMPILE_DEBUG 1
 
 #define DEFAULT_OCCLUSION_SHADER_ID 0
@@ -13,29 +15,6 @@ float nrand(float2 uv)
 {
     return frac(sin(dot(uv, float2(12.9898, 78.233))) * 43758.5453);
 }
-
-struct GamePointLight
-{
-	float3 position;
-	float3 color;
-	float radius;
-};
-
-struct GameDirectionalLight
-{
-	float3 color;
-	float3 angle;
-};
-
-// Todo : Share between Raster and RT
-cbuffer SceneData : register(b0, space0)
-{
-    float2 screenSize;
-    float4x4 ViewProjMatrix;
-    float4x4 InvProjMatrix;
-    float4x4 InvViewMatrix;
-    GameDirectionalLight g_DirectionalLight;
-};
 
 cbuffer InstanceData : register(b1, space0)
 {
@@ -68,7 +47,7 @@ float GetHardShadowOcclusion(RaytracingAccelerationStructure a_scene, float3 sur
     RayDesc ray;
     ray.Origin = WorldRayOrigin() + WorldRayDirection() * RayTCurrent() + surface_normal * 0.001;
 
-    ray.Direction = -normalize(g_DirectionalLight.angle); // TODO : Get directional light direction from constant buffer
+    ray.Direction = -normalize(oDirectionalLight.angle); // TODO : Get directional light direction from constant buffer
     ray.TMin = 0.0001;
     ray.TMax = 1000;
 

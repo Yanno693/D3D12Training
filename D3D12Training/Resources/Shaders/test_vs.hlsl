@@ -13,6 +13,6 @@ struct VertexOutput
 VertexOutput main(VertexInput input)
 {
     struct VertexOutput v;
-    v.position = float4(input.position + ViewProjMatrix[0][0], 0, 1);
+    v.position = float4(input.position + oViewProjMatrix[0][0], 0, 1);
     return v;
 }

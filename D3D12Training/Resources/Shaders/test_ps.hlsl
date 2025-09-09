@@ -15,6 +15,6 @@ PixelOutput main(VertexOutput v)
    
    PixelOutput p;
    p.color = float4(1, 0, 1, 1);
-   p.color.y = ViewProjMatrix[0][0];
+   p.color.y = oViewProjMatrix[0][0];
    return p;
 }
