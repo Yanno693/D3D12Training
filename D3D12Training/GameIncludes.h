@@ -30,21 +30,6 @@ struct GameTransform
 	GameScale scale;
 };
 
-/*
-struct GamePointLight
-{
-	GamePosition position;
-	GameColor color;
-	float radius;
-};
-
-struct GameDirectionalLight
-{
-	GameColor color;
-	GameRotation angle;
-};
-*/
-
 struct GameCamera
 {
 	GameTransform transform;
@@ -54,17 +39,6 @@ struct GameScreenResolution
 {
 	UINT width, height;
 };
-
-/*
-struct GameSceneData
-{
-	DirectX::XMFLOAT2 oScreenSize;
-	DirectX::XMMATRIX oViewProjMatrix;
-	DirectX::XMMATRIX oInvProjMatrix;
-	DirectX::XMMATRIX oInvViewMatrix;
-	GameDirectionalLight oDirectionalLight;
-};
-*/
 
 struct _ObjectData
 {
