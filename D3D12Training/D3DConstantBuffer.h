@@ -22,5 +22,5 @@ public:
 	void SetDebugName(LPCWSTR a_sName);
 };
 
-extern D3DConstantBuffer g_SceneConstantBuffer;
+//extern D3DConstantBuffer g_SceneConstantBuffer;
 

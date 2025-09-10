@@ -37,7 +37,7 @@ struct GameCamera
 
 struct GameScreenResolution
 {
-	UINT width, height;
+	unsigned int width, height;
 };
 
 struct _ObjectData

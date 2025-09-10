@@ -1,6 +1,6 @@
 #include "D3DConstantBuffer.h"
 
-D3DConstantBuffer g_SceneConstantBuffer;
+//D3DConstantBuffer g_SceneConstantBuffer;
 
 // Do i do this here ? Or in the buffer manager ?
 /*

@@ -145,6 +145,7 @@
     <ClCompile Include="D3DTexture.cpp" />
     <ClCompile Include="D3DVertexBuffer.cpp" />
     <ClCompile Include="D3DVertexShader.cpp" />
+    <ClCompile Include="GameScene.cpp" />
     <ClCompile Include="tinyxml2.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -166,6 +167,7 @@
     <ClInclude Include="D3DVertexBuffer.h" />
     <ClInclude Include="D3DVertexShader.h" />
     <ClInclude Include="GameIncludes.h" />
+    <ClInclude Include="GameScene.h" />
     <ClInclude Include="json.hpp" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="ShaderShared.h" />

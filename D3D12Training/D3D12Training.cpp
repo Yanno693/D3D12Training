@@ -12,6 +12,7 @@
 #include "D3DRenderTargetManager.h"
 
 #include "ShaderShared.h"
+#include "GameScene.h"
 
 #include <Xinput.h>
 
@@ -20,7 +21,8 @@ D3DRenderTargetManager g_D3DRenderTargetManager;
 // Game Logic structures and functions
 
 GameCamera g_Camera;
-extern GameScreenResolution g_ScreenResolution;
+
+//extern GameScreenResolution g_ScreenResolution;
 
 D3DTexture* test_texture;
 D3DTexture* test_depth;
@@ -391,13 +393,13 @@ void RenderLoop()
     };
 
     // Update Scene data
-    g_SceneConstantBuffer.TransisitonState(g_defaultCommandList.Get(), D3D12_RESOURCE_STATE_GENERIC_READ);
+    g_GameScene.m_pSceneConstantBuffer.TransisitonState(g_defaultCommandList.Get(), D3D12_RESOURCE_STATE_GENERIC_READ);
     g_SceneData.oViewProjMatrix = GetViewProjFromCamera(g_Camera, g_ScreenResolution);
     g_SceneData.oInvProjMatrix = GetInvProjFromCamera(g_Camera, g_ScreenResolution);
     g_SceneData.oInvViewMatrix = GetInvViewFromCamera(g_Camera);
     g_SceneData.oScreenSize.x = (float)g_ScreenResolution.width;
     g_SceneData.oScreenSize.y = (float)g_ScreenResolution.height;
-    g_SceneConstantBuffer.WriteData(&g_SceneData, sizeof(g_SceneData));
+    g_GameScene.m_pSceneConstantBuffer.WriteData(&g_SceneData, sizeof(g_SceneData));
 
     g_SceneData.oDirectionalLight.angle.z = (cos(GetElapsedTime() * 0.5f) * 1.5f); // TODO : Normalize the angle
 
@@ -496,8 +498,8 @@ int main()
     g_D3DBufferManager.SetDebugName(L"SRV Descriptor Heap");
     g_D3DRayTracingScene.Initialize(D3DDevice::s_device.Get());
 
-    g_D3DBufferManager.InitializeConstantBuffer(&g_SceneConstantBuffer, sizeof(GameSceneData));
-    g_SceneConstantBuffer.SetDebugName(L"Scene Constant Buffer");
+    g_D3DBufferManager.InitializeConstantBuffer(&g_GameScene.m_pSceneConstantBuffer, sizeof(GameSceneData));
+    g_GameScene.m_pSceneConstantBuffer.SetDebugName(L"Scene Constant Buffer");
 
     g_SceneData.oViewProjMatrix = DirectX::XMMatrixIdentity();
     g_SceneData.oDirectionalLight.color.r = 1;

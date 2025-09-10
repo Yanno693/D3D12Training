@@ -1,5 +1,6 @@
 #include "D3DRayTracingScene.h"
 #include "D3DDevice.h"
+#include "GameScene.h"
 
 void D3DRayTracingScene::Initialize(ID3D12Device5* a_pDevice)
 {
@@ -76,7 +77,7 @@ void D3DRayTracingScene::DrawScene(ID3D12GraphicsCommandList4* a_pCommandList)
 	a_pCommandList->SetDescriptorHeaps(1, heaps);
 	a_pCommandList->SetComputeRootDescriptorTable(0, m_pRenderTarget->m_eUAVGPUHandle);
 	a_pCommandList->SetComputeRootShaderResourceView(1, m_oBVH.m_pResource->GetGPUVirtualAddress());
-	a_pCommandList->SetComputeRootConstantBufferView(2, g_SceneConstantBuffer.m_pResource.Get()->GetGPUVirtualAddress());
+	a_pCommandList->SetComputeRootConstantBufferView(2, g_GameScene.m_pSceneConstantBuffer.m_pResource.Get()->GetGPUVirtualAddress());
 
 	D3D12_DISPATCH_RAYS_DESC oRayDispatch = {};
 	oRayDispatch.RayGenerationShaderRecord.SizeInBytes = 2 * D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT;

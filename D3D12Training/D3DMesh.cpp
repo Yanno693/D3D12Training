@@ -1,11 +1,10 @@
-#include "D3DMesh.h"
-
 #include "D3DDevice.h"
+#include "D3DMesh.h"
+#include "GameScene.h"
+
 #include <map>
 #include <fstream>
 #include "json.hpp"
-
-GameScreenResolution g_ScreenResolution;
 
 std::vector<D3DMesh> D3DMesh::s_MeshList;
 
@@ -86,6 +85,7 @@ void D3DMesh::ParseObject(std::string a_sPath)
 	}
 }
 
+// DEPRECATED
 void D3DMesh::ParseModel(std::string const a_sPath)
 {
 	using namespace tinyxml2;
@@ -652,7 +652,7 @@ void D3DMesh::Draw(ID3D12GraphicsCommandList* a_pCommandList)
 	a_pCommandList->IASetIndexBuffer(&m_oIndexBuffer.m_oView);
 	a_pCommandList->SetGraphicsRootSignature(m_pRootSignature.Get());
 
-	a_pCommandList->SetGraphicsRootConstantBufferView(0, g_SceneConstantBuffer.m_pResource->GetGPUVirtualAddress());
+	a_pCommandList->SetGraphicsRootConstantBufferView(0, g_GameScene.m_pSceneConstantBuffer.m_pResource->GetGPUVirtualAddress());
 	a_pCommandList->SetGraphicsRootConstantBufferView(1, m_oInstanceBuffer.m_pResource->GetGPUVirtualAddress());
 
 	D3D12_RECT rect;
