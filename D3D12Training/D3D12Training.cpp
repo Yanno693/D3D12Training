@@ -31,6 +31,8 @@ D3DDepthBuffer* mainDepth;
 
 DirectX::XMVECTOR up{ 0.0f, 1, 0, 0 };
 
+bool g_bIsRunning = true;
+
 void InputUpdate(float a_fDeltaTime)
 {
     using namespace DirectX;
@@ -270,6 +272,11 @@ void initD3DCommandsStructs()
  
 LRESULT CALLBACK m_WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
+    if (uMsg == WM_CLOSE)
+    {
+        PostQuitMessage(0);
+    }
+    
     return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
 
@@ -371,8 +378,6 @@ void RenderBegin()
     }
 }
 
-GameSceneData g_SceneData;
-
 void RenderLoop()
 {
 
@@ -394,14 +399,15 @@ void RenderLoop()
 
     // Update Scene data
     g_GameScene.m_pSceneConstantBuffer.TransisitonState(g_defaultCommandList.Get(), D3D12_RESOURCE_STATE_GENERIC_READ);
-    g_SceneData.oViewProjMatrix = GetViewProjFromCamera(g_Camera, g_ScreenResolution);
-    g_SceneData.oInvProjMatrix = GetInvProjFromCamera(g_Camera, g_ScreenResolution);
-    g_SceneData.oInvViewMatrix = GetInvViewFromCamera(g_Camera);
-    g_SceneData.oScreenSize.x = (float)g_ScreenResolution.width;
-    g_SceneData.oScreenSize.y = (float)g_ScreenResolution.height;
-    g_GameScene.m_pSceneConstantBuffer.WriteData(&g_SceneData, sizeof(g_SceneData));
+    g_GameScene.m_oSceneData.oViewProjMatrix = GetViewProjFromCamera(g_Camera, g_ScreenResolution);
+    g_GameScene.m_oSceneData.oInvProjMatrix = GetInvProjFromCamera(g_Camera, g_ScreenResolution);
+    g_GameScene.m_oSceneData.oInvViewMatrix = GetInvViewFromCamera(g_Camera);
+    g_GameScene.m_oSceneData.oScreenSize.x = (float)g_ScreenResolution.width;
+    g_GameScene.m_oSceneData.oScreenSize.y = (float)g_ScreenResolution.height;
+    g_GameScene.m_oSceneData.uiPointLightCount = g_GameScene.GetPointLightsCount();
+    g_GameScene.m_pSceneConstantBuffer.WriteData(&g_GameScene.m_oSceneData, sizeof(g_GameScene.m_oSceneData));
 
-    g_SceneData.oDirectionalLight.angle.z = (cos(GetElapsedTime() * 0.5f) * 1.5f); // TODO : Normalize the angle
+    g_GameScene.m_oSceneData.oDirectionalLight.angle.z = (cos(GetElapsedTime() * 0.5f) * 1.5f); // TODO : Normalize the angle
 
     if (D3DDevice::isRayTracingEnabled())
     {
@@ -496,18 +502,45 @@ int main()
 
     g_D3DBufferManager.Initialize(D3DDevice::s_device.Get(), 20000);
     g_D3DBufferManager.SetDebugName(L"SRV Descriptor Heap");
+    
+    g_GameScene.Initialize();
+
     g_D3DRayTracingScene.Initialize(D3DDevice::s_device.Get());
+
+
 
     g_D3DBufferManager.InitializeConstantBuffer(&g_GameScene.m_pSceneConstantBuffer, sizeof(GameSceneData));
     g_GameScene.m_pSceneConstantBuffer.SetDebugName(L"Scene Constant Buffer");
 
-    g_SceneData.oViewProjMatrix = DirectX::XMMatrixIdentity();
-    g_SceneData.oDirectionalLight.color.r = 1;
-    g_SceneData.oDirectionalLight.color.g = 1;
-    g_SceneData.oDirectionalLight.color.b = 1;
-    g_SceneData.oDirectionalLight.angle.x = -1; // TODO : Normalize the angle
-    g_SceneData.oDirectionalLight.angle.y = -1; // TODO : Normalize the angle
-    g_SceneData.oDirectionalLight.angle.z = -1; // TODO : Normalize the angle
+    g_GameScene.m_oSceneData.oViewProjMatrix = DirectX::XMMatrixIdentity();
+    g_GameScene.m_oSceneData.oDirectionalLight.color.r = 1;
+    g_GameScene.m_oSceneData.oDirectionalLight.color.g = 1;
+    g_GameScene.m_oSceneData.oDirectionalLight.color.b = 0.7f;
+    g_GameScene.m_oSceneData.oDirectionalLight.angle.x = -1; // TODO : Normalize the angle
+    g_GameScene.m_oSceneData.oDirectionalLight.angle.y = -1; // TODO : Normalize the angle
+    g_GameScene.m_oSceneData.oDirectionalLight.angle.z = -1; // TODO : Normalize the angle
+
+    GamePointLight pl0;
+    GamePointLight pl1;
+    pl0.color.r = 10;
+    pl0.color.g = 0;
+    pl0.color.b = 0;
+    pl0.radius = 25.0f;
+    pl0.position.x = 5.0f;
+    pl0.position.y = 15.0f;
+    pl0.position.z = 2.0f;
+
+    pl1.color.r = 0;
+    pl1.color.g = 0;
+    pl1.color.b = 1;
+    pl1.radius = 25.0f;
+    pl1.position.x = -10.0f;
+    pl1.position.y = 7.0f;
+    pl1.position.z = 0.0f;
+
+    g_GameScene.AddPointLight(pl0);
+    g_GameScene.AddPointLight(pl1);
+    g_GameScene.UploadPointLightsToGPU();
 
     D3DMesh oGroundMesh;
     D3DMesh oMesh;
@@ -540,15 +573,9 @@ int main()
 
     MSG message = {};
 
-    while (message.message != WM_QUIT)
+    while (g_bIsRunning)
     {
         // Game Loop
-        if (PeekMessage(&message, g_windowHandle, NULL, NULL, PM_REMOVE))
-        {
-            TranslateMessage(&message);
-            DispatchMessage(&message);
-        }
-
         g_clockCurrent = std::chrono::steady_clock::now();
         float elapsedTime = std::chrono::duration_cast<std::chrono::duration<float>>(g_clockCurrent - g_clockBegin).count();
         float deltaTime = std::chrono::duration_cast<std::chrono::duration<float>>(g_clockCurrent - g_clockLast).count();
@@ -564,6 +591,18 @@ int main()
         RenderBegin();
         RenderLoop();
         RenderEnd();
+
+        // Window Events
+        while (PeekMessage(&message, NULL, NULL, NULL, PM_REMOVE))
+        {
+            if (message.message == WM_QUIT)
+            {
+                g_bIsRunning = false;
+            }
+
+            TranslateMessage(&message);
+            DispatchMessage(&message);
+        }
     }
 
     return 0;

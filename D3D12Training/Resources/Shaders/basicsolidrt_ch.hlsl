@@ -40,7 +40,29 @@ void basicsolidrt_hit(inout RTPayload payload, BuiltInTriangleIntersectionAttrib
     //float3 hitColor = A * barycentrics.x + B * barycentrics.y + C * barycentrics.z;
     //float3 hitColor = normal;
 
-    //payload.color = float4(0,0,1,0) * (1.0f - f);
-    payload.color = float4(normal, 0) * (1.0f - f) * diffuseFactor;
+    float3 DirectionnalContribution = float3(1,1,1) * float3(oDirectionalLight.color) * (1.0f - f) * diffuseFactor;
+
+    payload.color = float4(DirectionnalContribution, 0);
+
+    float3 worldPos = WorldRayOrigin() + WorldRayDirection() * RayTCurrent();
+
+    for(int i = 0; i < uiPointLightCount; i++)
+    {
+        float distanceToLight = distance(worldPos, PointLights[i].position);
+
+        if(distanceToLight <= PointLights[i].radius)
+        {
+            float pointLightOcclusion = 1.0f - GetPointLightOcclusion(scene, i, distanceToLight, normal);
+
+            float3 PosToLight = normalize(PointLights[i].position - worldPos);
+            float PosToLightAngleAttenuation = max(0.0f, dot(normal, PosToLight));
+            float PosToLightDistanceAttenuation = max(0.0f, 1.0f - (distanceToLight / PointLights[i].radius));
+
+            float3 pointLightContribution = float3(1,1,1) * PointLights[i].color * PosToLightAngleAttenuation * PosToLightDistanceAttenuation * pointLightOcclusion;
+        
+            payload.color += float4(pointLightContribution, 0);
+        }
+    }
+    //payload.color = float4(normal, 0) * (1.0f - f) * diffuseFactor;
     //payload.color = float4(normal, 0);
 }

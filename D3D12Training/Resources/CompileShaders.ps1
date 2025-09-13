@@ -46,13 +46,17 @@ function compileShaderMissRT($shader)
 #./dxc.exe -Zi -Qembed_debug -E main -T vs_6_0 -Fo .\Shaders\test_vs.cso -Fre .\Shaders\test_refl.cso -Frs .\Shaders\test_rs.cso .\Shaders\test_vs.hlsl
 #./dxc.exe -Zi -Qembed_debug -E main -T ps_6_0 -Fo .\Shaders\test_ps.cso .\Shaders\test_ps.hlsl
 
-compileShader("test")
+# Meterial Vertex and Pixel shaders
 compileShader("basicsolid")
-compileShaderRT("basicsolidrt")
-compileShaderRT("basicsolidrt2")
+
+# Default Raygen and miss shaders
 compileShaderRayGenRT("default")
 compileShaderMissRT("default")
-compileShaderMissRT("default2")
 
+# Occlusion hit and miss shaders
 compileShaderRT("occlusion")
 compileShaderMissRT("occlusion")
+
+# Materials hit shaders
+compileShaderRT("basicsolidrt")
+compileShaderRT("basicsolidrt2")

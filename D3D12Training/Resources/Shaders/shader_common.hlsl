@@ -16,11 +16,6 @@ float nrand(float2 uv)
     return frac(sin(dot(uv, float2(12.9898, 78.233))) * 43758.5453);
 }
 
-cbuffer InstanceData : register(b1, space0)
-{
-    float4x4 ModelMatrix;
-};
-
 // RT Only
 struct RTPayload
 {
@@ -40,6 +35,13 @@ struct Vertex
     float3 normal : TEXCOORD;
 };
 
+cbuffer InstanceData : register(b1, space0)
+{
+    float4x4 ModelMatrix;
+};
+
+StructuredBuffer<GamePointLight> PointLights : register(t1);
+
 float GetHardShadowOcclusion(RaytracingAccelerationStructure a_scene, float3 surface_normal)
 {
     OcclusionPayload payLoad;
@@ -50,6 +52,24 @@ float GetHardShadowOcclusion(RaytracingAccelerationStructure a_scene, float3 sur
     ray.Direction = -normalize(oDirectionalLight.angle); // TODO : Get directional light direction from constant buffer
     ray.TMin = 0.0001;
     ray.TMax = 1000;
+
+    payLoad.iIsOccluded = 0;
+
+    TraceRay(a_scene, RAY_FLAG_CULL_BACK_FACING_TRIANGLES , 0xFF, OCCLUSION_HIT_SHADER_OFFSET, MESH_SHADER_GROUP_SIZE, DEFAULT_OCCLUSION_SHADER_ID, ray, payLoad);
+
+    return payLoad.iIsOccluded;
+}
+
+float GetPointLightOcclusion(RaytracingAccelerationStructure a_scene, float PointLightIndex, float distanceToLight, float3 surface_normal)
+{
+    OcclusionPayload payLoad;
+
+    RayDesc ray;
+    ray.Origin = WorldRayOrigin() + WorldRayDirection() * RayTCurrent() + surface_normal * 0.001;
+
+    ray.Direction = normalize(PointLights[PointLightIndex].position - ray.Origin); // TODO : Get directional light direction from constant buffer
+    ray.TMin = 0.0001;
+    ray.TMax = distanceToLight;
 
     payLoad.iIsOccluded = 0;
 

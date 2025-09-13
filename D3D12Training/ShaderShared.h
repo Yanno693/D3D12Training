@@ -2,17 +2,21 @@
 
 #ifdef __cplusplus
 	#include "GameIncludes.h"
+	#include "D3DIncludes.h"
 
 	#define cbuffer struct
 	#define float4x4 DirectX::XMMATRIX
 	#define float2 DirectX::XMFLOAT2
-	#define REGISTER(_bind, _space) 
+	#define REGISTER(_bind, _space)
+	#define uint UINT
 #else // HLSL
 	#define GamePosition float3
 	#define GameColor float3
 	#define GameRotation float3
 	#define REGISTER(_bind, _space) : register(_bind, _space)
 #endif
+
+#define MAX_POINTLIGHT_COUNT 100
 
 struct GamePointLight
 {
@@ -29,9 +33,10 @@ struct GameDirectionalLight
 
 cbuffer GameSceneData REGISTER(b0, space0)
 {
-	float2 oScreenSize;
 	float4x4 oViewProjMatrix;
 	float4x4 oInvProjMatrix;
 	float4x4 oInvViewMatrix;
+	float2 oScreenSize;
+	uint uiPointLightCount;
 	GameDirectionalLight oDirectionalLight;
 };

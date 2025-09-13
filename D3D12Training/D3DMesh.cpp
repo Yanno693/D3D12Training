@@ -455,7 +455,13 @@ void D3DMesh::CreatePSO(ID3D12Device* a_pDevice)
 	oVBPerObjectRootParameter.Descriptor.ShaderRegister = 1;
 	oVBPerObjectRootParameter.Descriptor.RegisterSpace = 0;
 
-	D3D12_ROOT_PARAMETER pVBRootParameters[] = { oVBSceneRootParameter , oVBPerObjectRootParameter };
+	D3D12_ROOT_PARAMETER oPointLightsRootParameter = {};
+	oPointLightsRootParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
+	oPointLightsRootParameter.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+	oPointLightsRootParameter.Descriptor.RegisterSpace = 0;
+	oPointLightsRootParameter.Descriptor.ShaderRegister = 1;
+
+	D3D12_ROOT_PARAMETER pVBRootParameters[] = { oVBSceneRootParameter , oVBPerObjectRootParameter, oPointLightsRootParameter };
 
 	D3D12_ROOT_SIGNATURE_DESC rsDesc = {};
 	rsDesc.NumParameters = _countof(pVBRootParameters);
@@ -654,6 +660,7 @@ void D3DMesh::Draw(ID3D12GraphicsCommandList* a_pCommandList)
 
 	a_pCommandList->SetGraphicsRootConstantBufferView(0, g_GameScene.m_pSceneConstantBuffer.m_pResource->GetGPUVirtualAddress());
 	a_pCommandList->SetGraphicsRootConstantBufferView(1, m_oInstanceBuffer.m_pResource->GetGPUVirtualAddress());
+	a_pCommandList->SetGraphicsRootShaderResourceView(2, g_GameScene.m_pPointLightBuffer.m_pResource->GetGPUVirtualAddress());
 
 	D3D12_RECT rect;
 	rect.left = 0;

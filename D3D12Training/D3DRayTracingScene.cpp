@@ -77,7 +77,8 @@ void D3DRayTracingScene::DrawScene(ID3D12GraphicsCommandList4* a_pCommandList)
 	a_pCommandList->SetDescriptorHeaps(1, heaps);
 	a_pCommandList->SetComputeRootDescriptorTable(0, m_pRenderTarget->m_eUAVGPUHandle);
 	a_pCommandList->SetComputeRootShaderResourceView(1, m_oBVH.m_pResource->GetGPUVirtualAddress());
-	a_pCommandList->SetComputeRootConstantBufferView(2, g_GameScene.m_pSceneConstantBuffer.m_pResource.Get()->GetGPUVirtualAddress());
+	a_pCommandList->SetComputeRootShaderResourceView(2, g_GameScene.m_pPointLightBuffer.m_pResource.Get()->GetGPUVirtualAddress());
+	a_pCommandList->SetComputeRootConstantBufferView(3, g_GameScene.m_pSceneConstantBuffer.m_pResource.Get()->GetGPUVirtualAddress());
 
 	D3D12_DISPATCH_RAYS_DESC oRayDispatch = {};
 	oRayDispatch.RayGenerationShaderRecord.SizeInBytes = 2 * D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT;
@@ -291,13 +292,19 @@ void D3DRayTracingScene::CreateRayTracingRootSignatures(ID3D12Device5* a_pDevice
 	oBVHRootParameter.Descriptor.ShaderRegister = 0;
 	oBVHRootParameter.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
+	D3D12_ROOT_PARAMETER oPointLightsRootParameter = {};
+	oPointLightsRootParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
+	oPointLightsRootParameter.Descriptor.RegisterSpace = 0;
+	oPointLightsRootParameter.Descriptor.ShaderRegister = 1;
+	oPointLightsRootParameter.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+
 	D3D12_ROOT_PARAMETER oSceneConstantsParameter = {};
 	oSceneConstantsParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
 	oSceneConstantsParameter.Descriptor.RegisterSpace = 0;
 	oSceneConstantsParameter.Descriptor.ShaderRegister = 0;
-	oBVHRootParameter.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+	oSceneConstantsParameter.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
-	D3D12_ROOT_PARAMETER pRayTracingRootParameters[] = { oUAVRootParameter, oBVHRootParameter, oSceneConstantsParameter };
+	D3D12_ROOT_PARAMETER pRayTracingRootParameters[] = { oUAVRootParameter, oBVHRootParameter, oPointLightsRootParameter, oSceneConstantsParameter };
 
 	Microsoft::WRL::ComPtr<ID3DBlob> rsBlob = nullptr;
 	Microsoft::WRL::ComPtr<ID3DBlob> errorBlob = nullptr;
