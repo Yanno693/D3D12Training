@@ -24,3 +24,5 @@ This renderer uses DXR.
 - Test model made with [Blender](https://www.blender.org/)
 - [DirectX Shader Compiler](https://github.com/microsoft/DirectXShaderCompiler)
 - [Pix on Windows](https://devblogs.microsoft.com/pix/)
+- Maraneshi : [HLSL Constant Buffer Layout Visualizer](https://maraneshi.github.io/HLSL-ConstantBufferLayoutVisualizer/)
+- Niels Lohmann : [JSON for modern C++](https://json.nlohmann.me/)

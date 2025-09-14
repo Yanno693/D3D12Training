@@ -380,16 +380,6 @@ void RenderBegin()
 
 void RenderLoop()
 {
-
-    /*
-    FLOAT color[4] = {
-        1.0f,
-        0.0f,
-        0.5f + (cos(GetElapsedTime() * 5.0f) * 0.5f),
-        1.0f
-    };
-    */
-
     FLOAT color[4] = {
         0.0f,
         0.0f,
@@ -398,15 +388,15 @@ void RenderLoop()
     };
 
     // Update Scene data
-    g_GameScene.m_pSceneConstantBuffer.TransisitonState(g_defaultCommandList.Get(), D3D12_RESOURCE_STATE_GENERIC_READ);
+    g_GameScene.m_pSceneConstantBuffer.TransisitonState(g_defaultCommandList.Get(), D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
     g_GameScene.m_oSceneData.oViewProjMatrix = GetViewProjFromCamera(g_Camera, g_ScreenResolution);
     g_GameScene.m_oSceneData.oInvProjMatrix = GetInvProjFromCamera(g_Camera, g_ScreenResolution);
     g_GameScene.m_oSceneData.oInvViewMatrix = GetInvViewFromCamera(g_Camera);
+    g_GameScene.m_oSceneData.oCameraWorldPos = g_Camera.transform.position;
     g_GameScene.m_oSceneData.oScreenSize.x = (float)g_ScreenResolution.width;
     g_GameScene.m_oSceneData.oScreenSize.y = (float)g_ScreenResolution.height;
     g_GameScene.m_oSceneData.uiPointLightCount = g_GameScene.GetPointLightsCount();
     g_GameScene.m_pSceneConstantBuffer.WriteData(&g_GameScene.m_oSceneData, sizeof(g_GameScene.m_oSceneData));
-
     g_GameScene.m_oSceneData.oDirectionalLight.angle.z = (cos(GetElapsedTime() * 0.5f) * 1.5f); // TODO : Normalize the angle
 
     if (D3DDevice::isRayTracingEnabled())

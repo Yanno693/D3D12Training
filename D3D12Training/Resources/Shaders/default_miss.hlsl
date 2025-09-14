@@ -6,7 +6,8 @@ RWTexture2D<float4> uav : register(u0);
 [shader("miss")]
 void default_miss(inout RTPayload payload)
 {
-    float sunVisibility = pow(max(0.0f, dot(-normalize(oDirectionalLight.angle), WorldRayDirection())), 100.0f); 
+    //float sunVisibility = pow(max(0.0f, dot(-normalize(oDirectionalLight.angle), WorldRayDirection())), 100.0f); 
+    float sunVisibility = 0; 
 /*
     float sunVisibility = max(0.0f, dot(-normalize(oDirectionalLight.angle), WorldRayDirection())); 
 

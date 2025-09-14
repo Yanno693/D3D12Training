@@ -31,12 +31,14 @@ struct GameDirectionalLight
 	GameRotation angle;
 };
 
+// Constant buffer packing rules : https://maraneshi.github.io/HLSL-ConstantBufferLayoutVisualizer/
 cbuffer GameSceneData REGISTER(b0, space0)
 {
 	float4x4 oViewProjMatrix;
 	float4x4 oInvProjMatrix;
 	float4x4 oInvViewMatrix;
-	float2 oScreenSize;
+	GamePosition oCameraWorldPos;
 	uint uiPointLightCount;
+	float2 oScreenSize;
 	GameDirectionalLight oDirectionalLight;
 };
