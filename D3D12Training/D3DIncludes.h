@@ -20,6 +20,11 @@
 #include <d3d12sdklayers.h>
 #include <wrl.h>
 
+#include <pix.h>
+
+#define BACK_BUFFER_FORMAT DXGI_FORMAT_R16G16B16A16_FLOAT
+#define DEPTH_BUFFER_FORMAT DXGI_FORMAT_D32_FLOAT
+
 static size_t GetSizeFromDXGIFormat(DXGI_FORMAT fmt)
 {
     switch (static_cast<int>(fmt))

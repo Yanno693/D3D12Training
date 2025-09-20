@@ -16,18 +16,22 @@
 
 #include <Xinput.h>
 
+#include "imgui.h"
+#include "imgui_impl_win32.h"
+#include "imgui_impl_dx12.h"
+
 D3DRenderTargetManager g_D3DRenderTargetManager;
 
 // Game Logic structures and functions
 
 GameCamera g_Camera;
 
-//extern GameScreenResolution g_ScreenResolution;
-
 D3DTexture* test_texture;
 D3DTexture* test_depth;
 D3DRenderTarget* mainRT;
 D3DDepthBuffer* mainDepth;
+
+ULONG64 nbFrame = 0;
 
 DirectX::XMVECTOR up{ 0.0f, 1, 0, 0 };
 
@@ -269,9 +273,14 @@ void initD3DCommandsStructs()
         assert(0);
     }
 }
+
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
  
 LRESULT CALLBACK m_WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
+    if (ImGui_ImplWin32_WndProcHandler(hwnd, uMsg, wParam, lParam))
+        return true;
+    
     if (uMsg == WM_CLOSE)
     {
         PostQuitMessage(0);
@@ -341,8 +350,6 @@ void initD3DRenderTargets()
     g_D3DBackBuffers[1].SetDebugName(L"Back Buffer 1");
 }
 
-ULONG64 nbFrame = 0;
-
 void WaitEndOfFrame() // TODO : Learn how fences really work
 {   
     UINT64 fence = g_FenceValue;
@@ -355,6 +362,48 @@ void WaitEndOfFrame() // TODO : Learn how fences really work
         g_GPUFence->SetEventOnCompletion(fence, g_FenceEvent);
         WaitForSingleObject(g_FenceEvent, INFINITE);
     }
+}
+
+void InitializeImGUI()
+{
+    ImGui::CreateContext();
+
+    ImGuiIO& oImGUIIO = ImGui::GetIO();
+    oImGUIIO.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard | ImGuiConfigFlags_NavEnableGamepad; // Enable Keyboard Controls
+
+    ImGui_ImplDX12_InitInfo oImGUIInitInfo = {};
+    oImGUIInitInfo.Device = D3DDevice::s_device.Get();
+    oImGUIInitInfo.CommandQueue = g_commandQueue.Get();
+    oImGUIInitInfo.NumFramesInFlight = 1; // ?
+    oImGUIInitInfo.RTVFormat = BACK_BUFFER_FORMAT;
+    oImGUIInitInfo.DSVFormat = DEPTH_BUFFER_FORMAT;
+    oImGUIInitInfo.SrvDescriptorHeap = g_D3DBufferManager.GetHeap();
+    oImGUIInitInfo.SrvDescriptorFreeFn = [](ImGui_ImplDX12_InitInfo*, D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle, D3D12_GPU_DESCRIPTOR_HANDLE gpu_handle) {};
+    oImGUIInitInfo.SrvDescriptorAllocFn = [](ImGui_ImplDX12_InitInfo*, D3D12_CPU_DESCRIPTOR_HANDLE* out_cpu_handle, D3D12_GPU_DESCRIPTOR_HANDLE* out_gpu_handle)
+    {
+        g_D3DBufferManager.RequestDescriptor(*out_cpu_handle, *out_gpu_handle);
+    };
+
+    ImGui_ImplDX12_Init(&oImGUIInitInfo);
+    ImGui_ImplWin32_Init(g_windowHandle);
+}
+
+// Generate content to draw
+void DrawImGUI()
+{
+    ImGui_ImplDX12_NewFrame();
+    ImGui_ImplWin32_NewFrame();
+    ImGui::NewFrame();
+
+    ImGui::ShowDemoWindow();
+
+    ImGui::Render();
+}
+
+// Draw to back buffer
+void RenderImGUI()
+{
+    ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), g_defaultCommandList.Get());
 }
 
 void RenderBegin()
@@ -438,7 +487,12 @@ void RenderLoop()
             D3DMesh::s_MeshList[i].Draw(g_defaultCommandList.Get());
         }
     }
-    
+
+    g_D3DBackBuffers[BackBufferIndex].TransisitonState(g_defaultCommandList.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET);
+    g_defaultCommandList->OMSetRenderTargets(1, &g_D3DBackBuffers[BackBufferIndex].m_uiCPUHandle, false, &mainDepth->m_uiCPUHandle);
+
+    RenderImGUI();
+
     g_D3DBackBuffers[BackBufferIndex].TransisitonState(g_defaultCommandList.Get(), D3D12_RESOURCE_STATE_COMMON);
 }
 
@@ -497,10 +551,10 @@ int main()
 
     g_D3DRayTracingScene.Initialize(D3DDevice::s_device.Get());
 
-
-
     g_D3DBufferManager.InitializeConstantBuffer(&g_GameScene.m_pSceneConstantBuffer, sizeof(GameSceneData));
     g_GameScene.m_pSceneConstantBuffer.SetDebugName(L"Scene Constant Buffer");
+
+    InitializeImGUI();
 
     g_GameScene.m_oSceneData.oViewProjMatrix = DirectX::XMMatrixIdentity();
     g_GameScene.m_oSceneData.oDirectionalLight.color.r = 1;
@@ -552,8 +606,8 @@ int main()
     mainRT = new D3DRenderTarget;
     mainDepth = new D3DDepthBuffer;
 
-    g_D3DBufferManager.InitializeTexture(test_texture, g_ScreenResolution.width, g_ScreenResolution.height, DXGI_FORMAT_R16G16B16A16_FLOAT);
-    g_D3DBufferManager.InitializeTexture(test_depth, g_ScreenResolution.width, g_ScreenResolution.height, DXGI_FORMAT_D32_FLOAT, true);
+    g_D3DBufferManager.InitializeTexture(test_texture, g_ScreenResolution.width, g_ScreenResolution.height, BACK_BUFFER_FORMAT);
+    g_D3DBufferManager.InitializeTexture(test_depth, g_ScreenResolution.width, g_ScreenResolution.height, DEPTH_BUFFER_FORMAT, true);
 
     g_D3DRenderTargetManager.InitializeRenderTargetFromTexture(mainRT, test_texture);
     g_D3DRenderTargetManager.InitializeDepthBufferFromTexture(mainDepth, test_depth);
@@ -565,6 +619,8 @@ int main()
 
     while (g_bIsRunning)
     {
+        DrawImGUI();
+        
         // Game Loop
         g_clockCurrent = std::chrono::steady_clock::now();
         float elapsedTime = std::chrono::duration_cast<std::chrono::duration<float>>(g_clockCurrent - g_clockBegin).count();

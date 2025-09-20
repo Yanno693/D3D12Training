@@ -12,7 +12,7 @@ void GameScene::Initialize()
 
 UINT GameScene::GetPointLightsCount() const
 {
-	return m_aPointLights.size();
+	return (UINT)m_aPointLights.size();
 }
 
 GameDirectionalLight& GameScene::GetDirectionalLight()
@@ -22,7 +22,7 @@ GameDirectionalLight& GameScene::GetDirectionalLight()
 
 void GameScene::UploadPointLightsToGPU()
 {
-	m_pPointLightBuffer.WriteData(m_aPointLights.data(), m_aPointLights.size() * sizeof(GamePointLight));
+	m_pPointLightBuffer.WriteData(m_aPointLights.data(), (UINT)(m_aPointLights.size() * sizeof(GamePointLight)));
 }
 
 void GameScene::AddPointLight(const GamePointLight& a_oPointLight)

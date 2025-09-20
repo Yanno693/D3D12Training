@@ -9,7 +9,6 @@ private:
 	std::vector<GamePointLight> m_aPointLights;
 	GameDirectionalLight m_oDirectionalLight;
 
-
 public:
 	D3DConstantBuffer m_pSceneConstantBuffer; // Scene Constant buffer
 	D3DGenericBuffer m_pPointLightBuffer; // Structured buffer of light
@@ -22,7 +21,6 @@ public:
 	void UploadPointLightsToGPU();
 
 	void AddPointLight(const GamePointLight& a_oPointLight);
-
 };
 
 extern GameScene g_GameScene;

@@ -82,7 +82,7 @@ void D3DDevice::InitializeSwapchain(UINT const a_uiWidth, UINT const a_uiHeight,
     DXGI_SWAP_CHAIN_DESC1 desc = {};
     desc.Width = a_uiWidth;
     desc.Height = a_uiHeight;
-    desc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+    desc.Format = BACK_BUFFER_FORMAT;
     desc.SampleDesc.Count = 1; // No-Antialiasing because 1 sample, also not usable with FLIP_DISCARD ?
     desc.SampleDesc.Quality = 0;
     desc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
