@@ -32,6 +32,7 @@ D3DRenderTarget* mainRT;
 D3DDepthBuffer* mainDepth;
 
 ULONG64 nbFrame = 0;
+bool bImGUIInitialized = false;
 
 DirectX::XMVECTOR up{ 0.0f, 1, 0, 0 };
 
@@ -285,6 +286,21 @@ LRESULT CALLBACK m_WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam
     {
         PostQuitMessage(0);
     }
+
+    if (uMsg == WM_SIZE)
+    {
+        if (bImGUIInitialized)
+        {
+            ImGuiIO& roImGUIIO = ImGui::GetIO();
+            /*
+            roImGUIIO.
+            UINT width = LOWORD(lParam);
+            UINT height = HIWORD(lParam);
+            roImGUIIO.DisplaySize.x = width + 1000;
+            roImGUIIO.DisplaySize.y = height + 1000;
+            */
+        }
+    }
     
     return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
@@ -306,6 +322,11 @@ void createD3DWindow(UINT const a_uiWidth, UINT const a_uiHeight)
         OutputDebugStringA("Error : Register Class when creating window \n");
         assert(0);
     }
+    
+    // https://stackoverflow.com/questions/61975605/createwindoww-window-is-too-small
+    // The size provided to CreateWindow includes the menu bar and stuff like that, thus needing to adjust the size to truly match
+    RECT oWindowRect = { 0, 0, a_uiWidth, a_uiHeight };
+    AdjustWindowRect(&oWindowRect, WS_OVERLAPPEDWINDOW | WS_CAPTION, true);
 
     g_windowHandle = CreateWindow(
         L"D3D12TrainingClass",
@@ -313,8 +334,8 @@ void createD3DWindow(UINT const a_uiWidth, UINT const a_uiHeight)
         WS_OVERLAPPEDWINDOW | WS_CAPTION,
         CW_USEDEFAULT,
         CW_USEDEFAULT,
-        a_uiWidth,
-        a_uiHeight,
+        oWindowRect.right - oWindowRect.left,
+        oWindowRect.bottom - oWindowRect.top,
         NULL,
         NULL,
         g_hInstance,
@@ -368,8 +389,9 @@ void InitializeImGUI()
 {
     ImGui::CreateContext();
 
-    ImGuiIO& oImGUIIO = ImGui::GetIO();
-    oImGUIIO.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard | ImGuiConfigFlags_NavEnableGamepad; // Enable Keyboard Controls
+    ImGuiIO& roImGUIIO = ImGui::GetIO();
+    roImGUIIO.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard | ImGuiConfigFlags_NavEnableGamepad; // Enable Keyboard Controls
+
 
     ImGui_ImplDX12_InitInfo oImGUIInitInfo = {};
     oImGUIInitInfo.Device = D3DDevice::s_device.Get();
@@ -386,6 +408,8 @@ void InitializeImGUI()
 
     ImGui_ImplDX12_Init(&oImGUIInitInfo);
     ImGui_ImplWin32_Init(g_windowHandle);
+
+    bImGUIInitialized = true;
 }
 
 // Generate content to draw
@@ -590,16 +614,19 @@ int main()
     D3DMesh oMesh;
     D3DMesh oMesh2;
     D3DMesh oMesh3;
+    D3DMesh oMesh4;
 
     oGroundMesh.Initialize("ground", D3DDevice::s_device.Get(), true);
     oMesh.Initialize("monkey", D3DDevice::s_device.Get(), true);
     oMesh2.Initialize("monkey2", D3DDevice::s_device.Get(), true);
     oMesh3.Initialize("monkeysmooth", D3DDevice::s_device.Get(), true);
+    oMesh4.Initialize("spheresmooth", D3DDevice::s_device.Get(), true);
 
     D3DMesh::s_MeshList.push_back(oGroundMesh);
     D3DMesh::s_MeshList.push_back(oMesh);
     D3DMesh::s_MeshList.push_back(oMesh2);
     D3DMesh::s_MeshList.push_back(oMesh3);
+    D3DMesh::s_MeshList.push_back(oMesh4);
 
     test_texture = new D3DTexture;
     test_depth = new D3DTexture;

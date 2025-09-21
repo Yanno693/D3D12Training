@@ -8,6 +8,8 @@
 #define DIRECT_HIT_SHADER_OFFSET 0
 #define OCCLUSION_HIT_SHADER_OFFSET 1
 
+#define OCCLUSION_PADDING 0.01
+
 #define MESH_SHADER_GROUP_SIZE 2
 
 // https://gist.github.com/keijiro/ee7bc388272548396870
@@ -47,7 +49,7 @@ float GetHardShadowOcclusion(RaytracingAccelerationStructure a_scene, float3 sur
     OcclusionPayload payLoad;
 
     RayDesc ray;
-    ray.Origin = WorldRayOrigin() + WorldRayDirection() * RayTCurrent() + surface_normal * 0.001;
+    ray.Origin = WorldRayOrigin() + WorldRayDirection() * RayTCurrent() + surface_normal * OCCLUSION_PADDING;
 
     ray.Direction = -normalize(oDirectionalLight.angle); // TODO : Get directional light direction from constant buffer
     ray.TMin = 0.0001;
@@ -65,7 +67,7 @@ float GetPointLightOcclusion(RaytracingAccelerationStructure a_scene, float Poin
     OcclusionPayload payLoad;
 
     RayDesc ray;
-    ray.Origin = WorldRayOrigin() + WorldRayDirection() * RayTCurrent() + surface_normal * 0.001;
+    ray.Origin = WorldRayOrigin() + WorldRayDirection() * RayTCurrent() + surface_normal * OCCLUSION_PADDING;
 
     ray.Direction = normalize(PointLights[PointLightIndex].position - ray.Origin); // TODO : Get directional light direction from constant buffer
     ray.TMin = 0.0001;
