@@ -1,0 +1,22 @@
+<object>
+    <model>sphere</model>
+    <shader>basicsolid</shader>
+    <rtshader>basicsolidrt</rtshader>
+    <transform>
+        <position>
+            <x>0</x>
+            <y>2</y>
+            <z>0</z>
+        </position>
+        <rotation>
+            <x>0</x>
+            <y>0</y>
+            <z>0</z>
+        </rotation>
+        <scale>
+            <x>1</x>
+            <y>1</y>
+            <z>1</z>
+        </scale>
+    </transform>
+</object>
