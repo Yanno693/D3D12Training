@@ -10,6 +10,7 @@
 #include "D3DMesh.h"
 #include "D3DDevice.h"
 #include "D3DRenderTargetManager.h"
+#include "GameInputs.h"
 
 #include "ShaderShared.h"
 #include "GameScene.h"
@@ -33,6 +34,8 @@ D3DDepthBuffer* mainDepth;
 
 ULONG64 nbFrame = 0;
 bool bImGUIInitialized = false;
+bool bImGUIDisplayed = false;
+bool bImGUIDisplayed_Pressed = false;
 
 DirectX::XMVECTOR up{ 0.0f, 1, 0, 0 };
 
@@ -43,39 +46,47 @@ void InputUpdate(float a_fDeltaTime)
     using namespace DirectX;
 
     a_fDeltaTime *= 5;
+
+    if (GameInputs::GetKeyDown(VK_F1))
+    {
+        bImGUIDisplayed = !bImGUIDisplayed;
+    }
+
+    if (bImGUIDisplayed)
+        return;
     
-    if (GetKeyState(VK_UP) & 0x8000)
+    if (GameInputs::GetKey(VK_UP))
     {
         g_Camera.transform.position.z += a_fDeltaTime;
     }
-    if (GetKeyState(VK_DOWN) & 0x8000)
+    if (GameInputs::GetKey(VK_DOWN))
     {
         g_Camera.transform.position.z -= a_fDeltaTime;
     }
-    if (GetKeyState(VK_RIGHT) & 0x8000)
+    if (GameInputs::GetKey(VK_RIGHT))
     {
         g_Camera.transform.position.x += a_fDeltaTime;
     }
-    if (GetKeyState(VK_LEFT) & 0x8000)
+    if (GameInputs::GetKey(VK_LEFT))
     {
         g_Camera.transform.position.x -= a_fDeltaTime;
     }
-    if (GetKeyState(VK_CONTROL) & 0x8000)
+    if (GameInputs::GetKey(VK_CONTROL))
     {
         g_Camera.transform.position.y -= a_fDeltaTime;
     }
-    if (GetKeyState(VK_SPACE) & 0x8000)
+    if (GameInputs::GetKey(VK_SPACE))
     {
         g_Camera.transform.position.y += a_fDeltaTime;
     }
 
-    if (GetKeyState('D') & 0x8000)
+    if (GameInputs::GetKey('D'))
     {
         g_Camera.transform.rotation.y += a_fDeltaTime;
         //g_Camera.transform.rotation.rotationMatrix *= DirectX::XMMatrixRotationY(-a_fDeltaTime * 0.2);
         g_Camera.transform.rotation.rotationMatrix *= DirectX::XMMatrixRotationAxis(up, -a_fDeltaTime * 0.2f);
     }
-    if (GetKeyState('Q') & 0x8000)
+    if (GameInputs::GetKey('Q'))
     {
         g_Camera.transform.rotation.y -= a_fDeltaTime;
         //g_Camera.transform.rotation.rotationMatrix *= DirectX::XMMatrixRotationY(a_fDeltaTime * 0.2);
@@ -85,13 +96,13 @@ void InputUpdate(float a_fDeltaTime)
     XMVECTOR right(g_Camera.transform.rotation.rotationMatrix.r[0]);
     XMVECTOR forward(g_Camera.transform.rotation.rotationMatrix.r[2]);
 
-    if (GetKeyState('Z') & 0x8000)
+    if (GameInputs::GetKey('Z'))
     {
         g_Camera.transform.rotation.x -= a_fDeltaTime;
         //g_Camera.transform.rotation.rotationMatrix *= DirectX::XMMatrixRotationX(a_fDeltaTime * 0.2);
         g_Camera.transform.rotation.rotationMatrix *= DirectX::XMMatrixRotationAxis(right, a_fDeltaTime * 0.2f);
     }
-    if (GetKeyState('S') & 0x8000)
+    if (GameInputs::GetKey('S'))
     {
         g_Camera.transform.rotation.x += a_fDeltaTime;
         //g_Camera.transform.rotation.rotationMatrix *= DirectX::XMMatrixRotationX(-a_fDeltaTime * 0.2);
@@ -110,6 +121,24 @@ void InputUpdate(float a_fDeltaTime)
         float LX = state.Gamepad.sThumbLX;
         float LY = state.Gamepad.sThumbLY;
 
+        BYTE RT = state.Gamepad.bRightTrigger;
+        BYTE LT = state.Gamepad.bLeftTrigger;
+
+        XMMATRIX upTranslation = XMMatrixIdentity();
+        XMMATRIX downTranslation = XMMatrixIdentity();
+        XMMATRIX forwardTranslation = XMMatrixIdentity();
+        XMMATRIX rightTranslation = XMMatrixIdentity();
+
+        if (RT > XINPUT_GAMEPAD_TRIGGER_THRESHOLD)
+        {
+            upTranslation = XMMatrixTranslationFromVector(up) * RT * 0.001;
+        }
+
+        if (LT > XINPUT_GAMEPAD_TRIGGER_THRESHOLD)
+        {
+            downTranslation = XMMatrixTranslationFromVector(up) * -LT * 0.001;
+        }
+
         float deadzone = sqrt(RX * RX + RY * RY);
         if (deadzone > XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE)
         {
@@ -120,15 +149,14 @@ void InputUpdate(float a_fDeltaTime)
         deadzone = sqrt(LX * LX + LY * LY);
         if (deadzone > XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE)
         {
-            XMMATRIX forwardTranslation = XMMatrixTranslationFromVector(forward) * LY * 0.00001f;
-            XMMATRIX rightTranslation = XMMatrixTranslationFromVector(right) * LX * 0.00001f;
-
-            XMMATRIX finalTranslation = forwardTranslation + rightTranslation;
-
-            g_Camera.transform.position.x += finalTranslation.r[3].m128_f32[0];
-            g_Camera.transform.position.y += finalTranslation.r[3].m128_f32[1];
-            g_Camera.transform.position.z += finalTranslation.r[3].m128_f32[2];
+            forwardTranslation = XMMatrixTranslationFromVector(forward) * LY * 0.00001f;
+            rightTranslation = XMMatrixTranslationFromVector(right) * LX * 0.00001f;
         }
+        XMMATRIX finalTranslation = forwardTranslation + rightTranslation + upTranslation + downTranslation;
+
+        g_Camera.transform.position.x += finalTranslation.r[3].m128_f32[0];
+        g_Camera.transform.position.y += finalTranslation.r[3].m128_f32[1];
+        g_Camera.transform.position.z += finalTranslation.r[3].m128_f32[2];
         //printf("Forward : X %f Y %f\n", RX, RY);
     }
 
@@ -515,7 +543,8 @@ void RenderLoop()
     g_D3DBackBuffers[BackBufferIndex].TransisitonState(g_defaultCommandList.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET);
     g_defaultCommandList->OMSetRenderTargets(1, &g_D3DBackBuffers[BackBufferIndex].m_uiCPUHandle, false, &mainDepth->m_uiCPUHandle);
 
-    RenderImGUI();
+    if (bImGUIDisplayed)
+        RenderImGUI();
 
     g_D3DBackBuffers[BackBufferIndex].TransisitonState(g_defaultCommandList.Get(), D3D12_RESOURCE_STATE_COMMON);
 }
@@ -578,6 +607,7 @@ int main()
     g_D3DBufferManager.InitializeConstantBuffer(&g_GameScene.m_pSceneConstantBuffer, sizeof(GameSceneData));
     g_GameScene.m_pSceneConstantBuffer.SetDebugName(L"Scene Constant Buffer");
 
+    GameInputs::Initialize();
     InitializeImGUI();
 
     g_GameScene.m_oSceneData.oViewProjMatrix = DirectX::XMMatrixIdentity();
@@ -646,6 +676,19 @@ int main()
 
     while (g_bIsRunning)
     {
+        // Window Events
+        while (PeekMessage(&message, NULL, NULL, NULL, PM_REMOVE))
+        {
+            if (message.message == WM_QUIT)
+            {
+                g_bIsRunning = false;
+            }
+
+            TranslateMessage(&message);
+            DispatchMessage(&message);
+        }
+        
+        GameInputs::UpdateState();
         DrawImGUI();
         
         // Game Loop
@@ -664,18 +707,6 @@ int main()
         RenderBegin();
         RenderLoop();
         RenderEnd();
-
-        // Window Events
-        while (PeekMessage(&message, NULL, NULL, NULL, PM_REMOVE))
-        {
-            if (message.message == WM_QUIT)
-            {
-                g_bIsRunning = false;
-            }
-
-            TranslateMessage(&message);
-            DispatchMessage(&message);
-        }
     }
 
     return 0;

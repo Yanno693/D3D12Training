@@ -114,6 +114,9 @@
     <ClCompile Include="imgui\backends\imgui_impl_win32.cpp">
       <Filter>Fichiers sources\imgui\backends</Filter>
     </ClCompile>
+    <ClCompile Include="GameInputs.cpp">
+      <Filter>Fichiers sources</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="D3DRenderTarget.h">
@@ -205,6 +208,9 @@
     </ClInclude>
     <ClInclude Include="imgui\backends\imgui_impl_win32.h">
       <Filter>Fichiers d%27en-tête\imgui\backends</Filter>
+    </ClInclude>
+    <ClInclude Include="GameInputs.h">
+      <Filter>Fichiers d%27en-tête</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
