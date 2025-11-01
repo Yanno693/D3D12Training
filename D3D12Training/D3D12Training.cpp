@@ -666,6 +666,8 @@ int main()
     g_D3DBufferManager.InitializeTexture(test_texture, g_ScreenResolution.width, g_ScreenResolution.height, BACK_BUFFER_FORMAT);
     g_D3DBufferManager.InitializeTexture(test_depth, g_ScreenResolution.width, g_ScreenResolution.height, DEPTH_BUFFER_FORMAT, true);
 
+    g_D3DBufferManager.RequestTexture("test");
+
     g_D3DRenderTargetManager.InitializeRenderTargetFromTexture(mainRT, test_texture);
     g_D3DRenderTargetManager.InitializeDepthBufferFromTexture(mainDepth, test_depth);
 

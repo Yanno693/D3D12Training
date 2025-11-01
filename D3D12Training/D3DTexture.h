@@ -12,6 +12,9 @@ private:
 	D3D12_RESOURCE_STATES m_eCurrentState = D3D12_RESOURCE_STATE_COMMON;
 	UINT m_uiWidth = 0;
 	UINT m_uiHeight = 0;
+	UINT m_uiMipCount = 0;
+
+	char* m_pUploadData = nullptr; // Texture data to upload before the texture is raedy to use
 
 public:
 	D3D12_UNORDERED_ACCESS_VIEW_DESC m_oUAVView;
@@ -28,4 +31,5 @@ public:
 
 	UINT GetWidth() const;
 	UINT GetHeight() const;
+	UINT GetMipCount() const;
 };

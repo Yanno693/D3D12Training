@@ -26,3 +26,6 @@ This renderer uses DXR.
 - [Pix on Windows](https://devblogs.microsoft.com/pix/)
 - Maraneshi : [HLSL Constant Buffer Layout Visualizer](https://maraneshi.github.io/HLSL-ConstantBufferLayoutVisualizer/)
 - Niels Lohmann : [JSON for modern C++](https://json.nlohmann.me/)
+- [DDS file format](https://learn.microsoft.com/en-us/windows/win32/direct3ddds/dx-graphics-dds-pguide) and [Texture Block Compression in Direct3D 11](https://learn.microsoft.com/en-us/windows/win32/direct3d11/texture-block-compression-in-direct3d-11)
+- A simple and versatile image editor : [Paint.net](https://www.getpaint.net/)
+- DDS Header gathered from [DirectXTex from Github](https://github.com/microsoft/DirectXTex)

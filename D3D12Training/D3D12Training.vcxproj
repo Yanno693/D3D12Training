@@ -175,6 +175,7 @@
     <ClInclude Include="D3DTexture.h" />
     <ClInclude Include="D3DVertexBuffer.h" />
     <ClInclude Include="D3DVertexShader.h" />
+    <ClInclude Include="DDS.h" />
     <ClInclude Include="GameIncludes.h" />
     <ClInclude Include="GameInputs.h" />
     <ClInclude Include="GameScene.h" />

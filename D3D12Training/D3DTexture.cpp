@@ -10,6 +10,11 @@ UINT D3DTexture::GetHeight() const
     return m_uiHeight;
 }
 
+UINT D3DTexture::GetMipCount() const
+{
+	return m_uiMipCount;
+}
+
 void D3DTexture::TransitionState(ID3D12GraphicsCommandList* a_commandList, D3D12_RESOURCE_STATES a_targetResourceState)
 {
 	assert(m_pResource != nullptr);

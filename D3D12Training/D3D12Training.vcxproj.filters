@@ -34,6 +34,9 @@
     <Filter Include="Fichiers d%27en-tête\imgui\backends">
       <UniqueIdentifier>{5aafc6a2-0de1-443f-9657-a2f6b563775f}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Fichiers d%27en-tête\dds">
+      <UniqueIdentifier>{406ed2ad-6fd4-455a-814f-768e3e6989c0}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="D3D12Training.cpp">
@@ -211,6 +214,9 @@
     </ClInclude>
     <ClInclude Include="GameInputs.h">
       <Filter>Fichiers d%27en-tête</Filter>
+    </ClInclude>
+    <ClInclude Include="DDS.h">
+      <Filter>Fichiers d%27en-tête\dds</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

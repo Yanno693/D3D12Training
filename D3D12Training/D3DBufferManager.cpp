@@ -1,5 +1,8 @@
 #include "D3DBufferManager.h"
 
+#include "DDS.h"
+#include <fstream>
+
 void D3DBufferManager::Initialize(ID3D12Device* a_pDevice, int a_iNbDecriptors)
 {
     assert(m_pDevice == nullptr);
@@ -300,6 +303,27 @@ void D3DBufferManager::InitializeTexture(D3DTexture* a_pTexture, UINT const a_ui
     a_pTexture->m_uiHeight = a_uiHeight;
 }
 
+D3DTexture* D3DBufferManager::GetTexture(std::string a_sName)
+{
+    if (m_oLoadedTextureSet.find(a_sName) == m_oLoadedTextureSet.end())
+        return nullptr;
+
+    return m_oLoadedTextureSet[a_sName];
+}
+
+D3DTexture* D3DBufferManager::RequestTexture(std::string a_sName)
+{
+    D3DTexture* pTexture = GetTexture(a_sName);
+
+    if (pTexture == nullptr)
+    {
+        std::string sPath = "./Textures/" + a_sName + ".dds";
+        pTexture = LoadTextureFromDDSFile(sPath, a_sName);
+    }
+
+    return pTexture;
+}
+
 // Requestion reusable handles for external update (i'll recreate the scene BVH at each frame, but without using additionnal descriptors in the heap)
 void D3DBufferManager::RequestDescriptor(D3D12_CPU_DESCRIPTOR_HANDLE& out_rCPUHandle, D3D12_GPU_DESCRIPTOR_HANDLE& out_rGPUHandle)
 {
@@ -322,6 +346,97 @@ void D3DBufferManager::IncrementOffset()
     {
         m_uiCurrentGPUDecriptorOffset.ptr += m_uiSRVSizeInHeap;
     }
+}
+
+DXGI_FORMAT GetDXGIFromDDSFormat(const DirectX::DDS_PIXELFORMAT& a_roPixelFormat)
+{
+
+    if ((a_roPixelFormat.flags & DDS_FOURCC) != 0) // BC Compression
+    {
+        if (a_roPixelFormat.fourCC == DirectX::DDSPF_DXT1.fourCC)
+            return DXGI_FORMAT_BC1_UNORM;
+
+        if (a_roPixelFormat.fourCC == DirectX::DDSPF_DXT2.fourCC || a_roPixelFormat.fourCC == DirectX::DDSPF_DXT3.fourCC)
+            return DXGI_FORMAT_BC2_UNORM;
+
+        if (a_roPixelFormat.fourCC == DirectX::DDSPF_DXT4.fourCC || a_roPixelFormat.fourCC == DirectX::DDSPF_DXT5.fourCC)
+            return DXGI_FORMAT_BC3_UNORM;
+
+        if (a_roPixelFormat.fourCC == DirectX::DDSPF_BC4_UNORM.fourCC)
+            return DXGI_FORMAT_BC4_UNORM;
+
+        if (a_roPixelFormat.fourCC == DirectX::DDSPF_BC4_SNORM.fourCC)
+            return DXGI_FORMAT_BC4_SNORM;
+
+        if (a_roPixelFormat.fourCC == DirectX::DDSPF_BC5_UNORM.fourCC)
+            return DXGI_FORMAT_BC5_UNORM;
+
+        if (a_roPixelFormat.fourCC == DirectX::DDSPF_BC5_SNORM.fourCC)
+            return DXGI_FORMAT_BC5_SNORM;
+        
+    }
+
+    return DXGI_FORMAT_UNKNOWN;
+}
+
+D3DTexture* D3DBufferManager::LoadTextureFromDDSFile(std::string a_sPath, std::string a_sName)
+{
+    // File reading
+    D3DTexture* pTexture = new D3DTexture;
+
+    std::ifstream oTextureStream(a_sPath, std::ios::binary);
+    assert(oTextureStream);
+
+    DirectX::DDS_HEADER oDDSTextureHeader;
+    UINT uiMagicNumberCheck;
+    
+    oTextureStream.read((char*)&uiMagicNumberCheck, sizeof(UINT));
+    assert(uiMagicNumberCheck == DirectX::DDS_MAGIC);
+    oTextureStream.read((char*)&oDDSTextureHeader, sizeof(DirectX::DDS_HEADER));
+
+    DirectX::DDS_PIXELFORMAT oPixelFormat = oDDSTextureHeader.ddspf;
+
+    DXGI_FORMAT eFormat = GetDXGIFromDDSFormat(oPixelFormat);
+
+    // Texture Resource initialization
+    D3D12_RESOURCE_DESC resourceDesc = {};
+    resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+    resourceDesc.Format = eFormat;
+    resourceDesc.MipLevels = 1;
+    resourceDesc.Alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
+    resourceDesc.Height = oDDSTextureHeader.width;
+    resourceDesc.Width = oDDSTextureHeader.height;
+    resourceDesc.DepthOrArraySize = 1;
+    resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_64KB_UNDEFINED_SWIZZLE;
+    resourceDesc.SampleDesc.Count = 1;
+    resourceDesc.SampleDesc.Quality = 0;
+    resourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+
+    D3D12_RESOURCE_ALLOCATION_INFO allocationInfo = m_pDevice->GetResourceAllocationInfo(0, 1, &resourceDesc);
+    assert(allocationInfo.SizeInBytes != UINT64_MAX);
+
+    D3D12_HEAP_DESC heapDesc = {};
+    heapDesc.Alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
+    heapDesc.Flags = D3D12_HEAP_FLAG_NONE;
+    heapDesc.SizeInBytes = allocationInfo.SizeInBytes;
+    heapDesc.Properties.Type = D3D12_HEAP_TYPE_DEFAULT;
+    heapDesc.Properties.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+    heapDesc.Properties.CreationNodeMask = 0;
+    heapDesc.Properties.VisibleNodeMask = 0;
+    heapDesc.Properties.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+
+    if (!SUCCEEDED(m_pDevice->CreateCommittedResource(&heapDesc.Properties, heapDesc.Flags, &resourceDesc, D3D12_RESOURCE_STATE_COPY_DEST, nullptr, IID_PPV_ARGS(&pTexture->m_pResource))))
+    {
+        assert(0);
+    }
+
+    pTexture->m_pUploadData = new char[allocationInfo.SizeInBytes];
+    oTextureStream.read(pTexture->m_pUploadData, allocationInfo.SizeInBytes);
+
+    oTextureStream.close();
+    m_oLoadedTextureSet[a_sName] = pTexture;
+
+    return pTexture;
 }
 
 void D3DBufferManager::SetDebugName(LPCWSTR a_sName)
