@@ -399,7 +399,7 @@ void initD3DRenderTargets()
     g_D3DBackBuffers[1].SetDebugName(L"Back Buffer 1");
 }
 
-void WaitEndOfFrame() // TODO : Learn how fences really work
+void WaitEndOfCommandList() // TODO : Learn how fences really work
 {   
     UINT64 fence = g_FenceValue;
 
@@ -458,6 +458,30 @@ void RenderImGUI()
     ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), g_defaultCommandList.Get());
 }
 
+void UploadTextures()
+{ 
+    if (!g_D3DBufferManager.isUploadTextureQueueEmpty())
+    {
+        if (!SUCCEEDED(g_defaultCommandList->Reset(g_commandAllocator.Get(), NULL)))
+        {
+            OutputDebugStringA("Error : Command List Reset \n");
+            assert(0);
+        }
+
+        g_D3DBufferManager.UploadTextures(g_defaultCommandList.Get());
+
+        if (!SUCCEEDED(g_defaultCommandList->Close()))
+        {
+            OutputDebugStringA("Error : Command List Close \n");
+            assert(0);
+        }
+
+        ID3D12CommandList* ppCommandLists[] = { g_defaultCommandList.Get() };
+        g_commandQueue->ExecuteCommandLists(1, ppCommandLists);
+        WaitEndOfCommandList();
+    }
+}
+
 void RenderBegin()
 {    
     nbFrame++;
@@ -471,6 +495,8 @@ void RenderBegin()
         OutputDebugStringA("Error : Command Allocator Reset \n");
         assert(0);
     }
+
+    UploadTextures();
 
     if (!SUCCEEDED(g_defaultCommandList->Reset(g_commandAllocator.Get(), NULL)))
     {
@@ -559,7 +585,7 @@ void RenderEnd()
 
     ID3D12CommandList* ppCommandLists[] = { g_defaultCommandList.Get() };
     g_commandQueue->ExecuteCommandLists(1, ppCommandLists);
-    WaitEndOfFrame();
+    WaitEndOfCommandList();
 
     g_D3DRayTracingScene.FlushRTScene();
 
@@ -666,7 +692,7 @@ int main()
     g_D3DBufferManager.InitializeTexture(test_texture, g_ScreenResolution.width, g_ScreenResolution.height, BACK_BUFFER_FORMAT);
     g_D3DBufferManager.InitializeTexture(test_depth, g_ScreenResolution.width, g_ScreenResolution.height, DEPTH_BUFFER_FORMAT, true);
 
-    g_D3DBufferManager.RequestTexture("test");
+    g_D3DBufferManager.RequestTexture("test2");
 
     g_D3DRenderTargetManager.InitializeRenderTargetFromTexture(mainRT, test_texture);
     g_D3DRenderTargetManager.InitializeDepthBufferFromTexture(mainDepth, test_depth);

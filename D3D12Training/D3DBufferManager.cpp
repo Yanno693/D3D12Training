@@ -23,6 +23,10 @@ void D3DBufferManager::Initialize(ID3D12Device* a_pDevice, int a_iNbDecriptors)
     m_uiCurrentDecriptorOffset = m_pDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
     m_uiCurrentGPUDecriptorOffset = m_pDescriptorHeap->GetGPUDescriptorHandleForHeapStart();
     m_uiSRVSizeInHeap = a_pDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+
+
+    m_pUploadBuffer = new D3DGenericBuffer;
+    InitializeGenericBuffer(m_pUploadBuffer, UPLOAD_BUFFER_SIZE);
 }
 
 void D3DBufferManager::InitializeConstantBuffer(D3DConstantBuffer* a_pConstantBuffer, UINT const a_uiSizeInBytes, D3D12_RESOURCE_STATES const a_eDefaultState)
@@ -305,10 +309,10 @@ void D3DBufferManager::InitializeTexture(D3DTexture* a_pTexture, UINT const a_ui
 
 D3DTexture* D3DBufferManager::GetTexture(std::string a_sName)
 {
-    if (m_oLoadedTextureSet.find(a_sName) == m_oLoadedTextureSet.end())
+    if (m_oLoadedTexture.find(a_sName) == m_oLoadedTexture.end())
         return nullptr;
 
-    return m_oLoadedTextureSet[a_sName];
+    return m_oLoadedTexture[a_sName];
 }
 
 D3DTexture* D3DBufferManager::RequestTexture(std::string a_sName)
@@ -331,6 +335,86 @@ void D3DBufferManager::RequestDescriptor(D3D12_CPU_DESCRIPTOR_HANDLE& out_rCPUHa
     out_rGPUHandle = m_uiCurrentGPUDecriptorOffset;
     
     IncrementOffset();
+}
+
+// Upload Texture from CPU memory to GPU memory, using 
+void D3DBufferManager::UploadTextures(ID3D12GraphicsCommandList* a_pCommandList)
+{
+
+    std::queue<std::pair<std::string, D3DTexture*>> oReadyToLoad;
+
+    // 1. Get as many texture as I can in my upload buffer and set them ready to load
+    bool bRecording = true;
+    while (bRecording && !m_oTextureToLoad.empty())
+    {
+        UINT uiNextTextureSize = m_oTextureToLoad.back().second->GetResourceSize();
+
+        if (uiNextTextureSize + m_uiCurrentUploadBufferAllocation <= UPLOAD_BUFFER_SIZE)
+        {
+            m_uiCurrentUploadBufferAllocation += uiNextTextureSize;
+
+            auto oTexture = m_oTextureToLoad.back();
+            m_oTextureToLoad.pop();
+
+            m_pUploadBuffer->WriteData(oTexture.second->m_pUploadData, uiNextTextureSize, m_uiCurrentUploadBufferAllocation);
+
+            oReadyToLoad.push(oTexture);
+        }
+        else
+        {
+            bRecording = false;
+        }
+    }
+
+    UINT uiUploadPointer = 0;
+
+    m_pUploadBuffer->TransitionState(a_pCommandList, D3D12_RESOURCE_STATE_COPY_SOURCE);
+
+    // 2. Upload the bunch of texture
+    while (!oReadyToLoad.empty())
+    {
+        auto oTexture = oReadyToLoad.back();
+        D3DTexture* pTexture = oTexture.second;
+        oReadyToLoad.pop();
+
+        //a_pCommandList->CopyBufferRegion(oTexture.second->m_pResource.Get(), 0, m_pUploadBuffer->m_pResource.Get(), uiUploadPointer, oTexture.second->GetResourceSize());
+        
+        D3D12_PLACED_SUBRESOURCE_FOOTPRINT oOffset = {};
+        oOffset.Footprint.Depth = 1;
+        oOffset.Footprint.Width = pTexture->GetWidth();
+        oOffset.Footprint.Height = pTexture->GetHeight();
+        oOffset.Footprint.Format = pTexture->GetFormat();
+        oOffset.Footprint.RowPitch = pTexture->GetResourceSize();
+
+        D3D12_TEXTURE_COPY_LOCATION oSrcTex = {};
+        oSrcTex.pResource = m_pUploadBuffer->m_pResource.Get();
+        oSrcTex.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+        oSrcTex.PlacedFootprint = oOffset;
+        oSrcTex.PlacedFootprint.Offset = uiUploadPointer;
+
+
+        D3D12_TEXTURE_COPY_LOCATION oDstTex;
+        oDstTex.pResource = pTexture->m_pResource.Get();
+        oDstTex.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+        oDstTex.SubresourceIndex = 0;
+        oDstTex.PlacedFootprint = oOffset;
+        oDstTex.PlacedFootprint.Offset = 0;
+
+        a_pCommandList->CopyTextureRegion(&oDstTex, 0, 0, 0, &oSrcTex, nullptr);
+        
+        m_oLoadedTexture[oTexture.first] = pTexture;
+        oTexture.second->TransitionState(a_pCommandList, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+
+        uiUploadPointer += pTexture->GetResourceSize();
+    }
+
+    m_uiCurrentUploadBufferAllocation = 0;
+    // And ... i guess we're good, right ?
+}
+
+bool D3DBufferManager::isUploadTextureQueueEmpty()
+{
+    return m_oTextureToLoad.empty();
 }
 
 ID3D12DescriptorHeap* D3DBufferManager::GetHeap()
@@ -396,18 +480,18 @@ D3DTexture* D3DBufferManager::LoadTextureFromDDSFile(std::string a_sPath, std::s
 
     DirectX::DDS_PIXELFORMAT oPixelFormat = oDDSTextureHeader.ddspf;
 
-    DXGI_FORMAT eFormat = GetDXGIFromDDSFormat(oPixelFormat);
+    DXGI_FORMAT eTextureFormat = GetDXGIFromDDSFormat(oPixelFormat);
 
     // Texture Resource initialization
     D3D12_RESOURCE_DESC resourceDesc = {};
     resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-    resourceDesc.Format = eFormat;
+    resourceDesc.Format = eTextureFormat;
     resourceDesc.MipLevels = 1;
     resourceDesc.Alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
     resourceDesc.Height = oDDSTextureHeader.width;
     resourceDesc.Width = oDDSTextureHeader.height;
     resourceDesc.DepthOrArraySize = 1;
-    resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_64KB_UNDEFINED_SWIZZLE;
+    resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
     resourceDesc.SampleDesc.Count = 1;
     resourceDesc.SampleDesc.Quality = 0;
     resourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
@@ -430,11 +514,37 @@ D3DTexture* D3DBufferManager::LoadTextureFromDDSFile(std::string a_sPath, std::s
         assert(0);
     }
 
+    D3D12_SHADER_RESOURCE_VIEW_DESC descSRV = {};
+
+    descSRV.Format = eTextureFormat;
+    descSRV.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+    descSRV.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+    descSRV.Texture2D.MostDetailedMip = 0;
+    descSRV.Texture2D.MipLevels = -1;
+    descSRV.Texture2D.PlaneSlice = 0;
+    descSRV.Texture2D.ResourceMinLODClamp = 0;
+
+    m_pDevice->CreateShaderResourceView(pTexture->m_pResource.Get(), &descSRV, m_uiCurrentDecriptorOffset);
+
+    pTexture->m_eSRVGPUHandle = m_uiCurrentGPUDecriptorOffset;
+    pTexture->m_oSRVView = descSRV;
+    pTexture->m_uiWidth = oDDSTextureHeader.width;
+    pTexture->m_uiHeight = oDDSTextureHeader.height;
+    pTexture->m_uiMipCount = 1;
+    pTexture->m_eFormat = eTextureFormat;
+    pTexture->m_uiResourceSize = allocationInfo.SizeInBytes;
+    pTexture->m_eCurrentState = D3D12_RESOURCE_STATE_COPY_DEST;
+
+    IncrementOffset();
+
     pTexture->m_pUploadData = new char[allocationInfo.SizeInBytes];
     oTextureStream.read(pTexture->m_pUploadData, allocationInfo.SizeInBytes);
-
     oTextureStream.close();
-    m_oLoadedTextureSet[a_sName] = pTexture;
+
+    std::wstring sWName(a_sName.begin(), a_sName.end());
+    pTexture->SetDebugName(sWName.c_str());
+
+    m_oTextureToLoad.push(std::make_pair(a_sName, pTexture));
 
     return pTexture;
 }

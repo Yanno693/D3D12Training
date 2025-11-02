@@ -9,6 +9,8 @@
 
 #include <unordered_map>
 #include <map>
+#include <queue>
+#include <utility>
 
 class D3DBufferManager
 {
@@ -18,13 +20,18 @@ private:
 	D3D12_GPU_DESCRIPTOR_HANDLE m_uiCurrentGPUDecriptorOffset = {}; // Current GPU offet in heap memory (with the heap in Shader Visible)
 	UINT m_uiSRVSizeInHeap = 0; // Size of one RTV in heap memory, used for updating the offset
 
-	ID3D12Device* m_pDevice = nullptr; // A pointer tho the device once initialized;
+	ID3D12Device* m_pDevice = nullptr; // A pointer to the device once initialized;
 
 	void IncrementOffset();
 
+	// Texture Uploading Stuff
 	D3DTexture* LoadTextureFromDDSFile(std::string a_sPath, std::string a_sName);
 
-	std::map<std::string, D3DTexture*> m_oLoadedTextureSet;
+	std::map<std::string, D3DTexture*> m_oLoadedTexture; // Texture loaded in GPU memory
+	std::queue<std::pair<std::string, D3DTexture*>> m_oTextureToLoad; // Texture that need to be loaded to GPU memory
+
+	D3DGenericBuffer* m_pUploadBuffer; // CPU Side buffer used for uploading textures
+	UINT m_uiCurrentUploadBufferAllocation = 0; // Current occupation of the Upload Buffer, it must be smaller that the buffer size
 
 public:
 
@@ -40,6 +47,9 @@ public:
 	D3DTexture* RequestTexture(std::string a_sName); // Get a texture from the loaded textures, and load it if not present
 
 	void RequestDescriptor(D3D12_CPU_DESCRIPTOR_HANDLE& out_rCPUHandle, D3D12_GPU_DESCRIPTOR_HANDLE & out_rCGUHandle);
+
+	void UploadTextures(ID3D12GraphicsCommandList* a_pCommandList);
+	bool isUploadTextureQueueEmpty();
 
 	ID3D12DescriptorHeap* GetHeap();
 

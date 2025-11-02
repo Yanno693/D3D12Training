@@ -15,6 +15,16 @@ UINT D3DTexture::GetMipCount() const
 	return m_uiMipCount;
 }
 
+UINT64 D3DTexture::GetResourceSize() const
+{
+	return m_uiResourceSize;
+}
+
+DXGI_FORMAT D3DTexture::GetFormat() const
+{
+	return m_eFormat;
+}
+
 void D3DTexture::TransitionState(ID3D12GraphicsCommandList* a_commandList, D3D12_RESOURCE_STATES a_targetResourceState)
 {
 	assert(m_pResource != nullptr);
