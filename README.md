@@ -10,11 +10,13 @@ This renderer uses DXR.
 - Basic graphic pipeline
 - Basic Ray Tracing pipeline with DXR
 - GLTF loader
+- Block-Compressed Texture loading through DDS files.
 - Camera control with XInput
 - A PowerShell script for easy shader compilation
 # Screenshots
 ![capture1](./Screenshots/capture1.png)
 ![capture2](./Screenshots/capture2.png)
+![capture3](./Screenshots/capture3.png)
 # Useful Links
 - [DirectX Raytracing Spec](https://microsoft.github.io/DirectX-Specs/d3d/Raytracing.html)
 - [DirectX Raytracing Documentation](https://learn.microsoft.com/en-us/windows/win32/direct3d12/direct3d-12-raytracing)

@@ -13,6 +13,7 @@ private:
 	UINT m_uiWidth = 0;
 	UINT m_uiHeight = 0;
 	UINT m_uiMipCount = 0;
+	UINT m_uiRowPitch = 0;
 	DXGI_FORMAT m_eFormat = DXGI_FORMAT_UNKNOWN;
 
 	char* m_pUploadData = nullptr; // Texture data to upload before the texture is raedy to use
@@ -33,6 +34,7 @@ public:
 	UINT GetWidth() const;
 	UINT GetHeight() const;
 	UINT GetMipCount() const;
+	UINT GetRowPitch() const;
 	UINT64 GetResourceSize() const;
 	DXGI_FORMAT GetFormat() const;
 };

@@ -15,6 +15,11 @@ UINT D3DTexture::GetMipCount() const
 	return m_uiMipCount;
 }
 
+UINT D3DTexture::GetRowPitch() const
+{
+	return m_uiRowPitch;
+}
+
 UINT64 D3DTexture::GetResourceSize() const
 {
 	return m_uiResourceSize;

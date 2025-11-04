@@ -27,6 +27,7 @@ void D3DBufferManager::Initialize(ID3D12Device* a_pDevice, int a_iNbDecriptors)
 
     m_pUploadBuffer = new D3DGenericBuffer;
     InitializeGenericBuffer(m_pUploadBuffer, UPLOAD_BUFFER_SIZE);
+    m_pUploadBuffer->SetDebugName(L"Upload Buffer");
 }
 
 void D3DBufferManager::InitializeConstantBuffer(D3DConstantBuffer* a_pConstantBuffer, UINT const a_uiSizeInBytes, D3D12_RESOURCE_STATES const a_eDefaultState)
@@ -328,7 +329,7 @@ D3DTexture* D3DBufferManager::RequestTexture(std::string a_sName)
     return pTexture;
 }
 
-// Requestion reusable handles for external update (i'll recreate the scene BVH at each frame, but without using additionnal descriptors in the heap)
+// Request reusable handles for external update (i'll recreate the scene BVH at each frame, but without using additionnal descriptors in the heap)
 void D3DBufferManager::RequestDescriptor(D3D12_CPU_DESCRIPTOR_HANDLE& out_rCPUHandle, D3D12_GPU_DESCRIPTOR_HANDLE& out_rGPUHandle)
 {
     out_rCPUHandle = m_uiCurrentDecriptorOffset;
@@ -347,16 +348,18 @@ void D3DBufferManager::UploadTextures(ID3D12GraphicsCommandList* a_pCommandList)
     bool bRecording = true;
     while (bRecording && !m_oTextureToLoad.empty())
     {
-        UINT uiNextTextureSize = m_oTextureToLoad.back().second->GetResourceSize();
+        UINT uiNextTextureSize = m_oTextureToLoad.front().second->GetResourceSize();
 
         if (uiNextTextureSize + m_uiCurrentUploadBufferAllocation <= UPLOAD_BUFFER_SIZE)
         {
-            m_uiCurrentUploadBufferAllocation += uiNextTextureSize;
 
-            auto oTexture = m_oTextureToLoad.back();
+            auto oTexture = m_oTextureToLoad.front();
             m_oTextureToLoad.pop();
 
             m_pUploadBuffer->WriteData(oTexture.second->m_pUploadData, uiNextTextureSize, m_uiCurrentUploadBufferAllocation);
+            delete[] oTexture.second->m_pUploadData;
+
+            m_uiCurrentUploadBufferAllocation += uiNextTextureSize;
 
             oReadyToLoad.push(oTexture);
         }
@@ -373,25 +376,22 @@ void D3DBufferManager::UploadTextures(ID3D12GraphicsCommandList* a_pCommandList)
     // 2. Upload the bunch of texture
     while (!oReadyToLoad.empty())
     {
-        auto oTexture = oReadyToLoad.back();
+        auto oTexture = oReadyToLoad.front();
         D3DTexture* pTexture = oTexture.second;
         oReadyToLoad.pop();
-
-        //a_pCommandList->CopyBufferRegion(oTexture.second->m_pResource.Get(), 0, m_pUploadBuffer->m_pResource.Get(), uiUploadPointer, oTexture.second->GetResourceSize());
         
         D3D12_PLACED_SUBRESOURCE_FOOTPRINT oOffset = {};
         oOffset.Footprint.Depth = 1;
         oOffset.Footprint.Width = pTexture->GetWidth();
         oOffset.Footprint.Height = pTexture->GetHeight();
         oOffset.Footprint.Format = pTexture->GetFormat();
-        oOffset.Footprint.RowPitch = pTexture->GetResourceSize();
+        oOffset.Footprint.RowPitch = pTexture->GetRowPitch();
 
         D3D12_TEXTURE_COPY_LOCATION oSrcTex = {};
         oSrcTex.pResource = m_pUploadBuffer->m_pResource.Get();
         oSrcTex.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
         oSrcTex.PlacedFootprint = oOffset;
         oSrcTex.PlacedFootprint.Offset = uiUploadPointer;
-
 
         D3D12_TEXTURE_COPY_LOCATION oDstTex;
         oDstTex.pResource = pTexture->m_pResource.Get();
@@ -403,9 +403,9 @@ void D3DBufferManager::UploadTextures(ID3D12GraphicsCommandList* a_pCommandList)
         a_pCommandList->CopyTextureRegion(&oDstTex, 0, 0, 0, &oSrcTex, nullptr);
         
         m_oLoadedTexture[oTexture.first] = pTexture;
-        oTexture.second->TransitionState(a_pCommandList, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        pTexture->TransitionState(a_pCommandList, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
-        uiUploadPointer += pTexture->GetResourceSize();
+        uiUploadPointer += pTexture->GetResourceSize(); // Increasing of the texture size to place the pointer to the start of the next texture
     }
 
     m_uiCurrentUploadBufferAllocation = 0;
@@ -486,7 +486,7 @@ D3DTexture* D3DBufferManager::LoadTextureFromDDSFile(std::string a_sPath, std::s
     D3D12_RESOURCE_DESC resourceDesc = {};
     resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
     resourceDesc.Format = eTextureFormat;
-    resourceDesc.MipLevels = 1;
+    resourceDesc.MipLevels = oDDSTextureHeader.mipMapCount;
     resourceDesc.Alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
     resourceDesc.Height = oDDSTextureHeader.width;
     resourceDesc.Width = oDDSTextureHeader.height;
@@ -522,7 +522,7 @@ D3DTexture* D3DBufferManager::LoadTextureFromDDSFile(std::string a_sPath, std::s
     descSRV.Texture2D.MostDetailedMip = 0;
     descSRV.Texture2D.MipLevels = -1;
     descSRV.Texture2D.PlaneSlice = 0;
-    descSRV.Texture2D.ResourceMinLODClamp = 0;
+    descSRV.Texture2D.ResourceMinLODClamp = 0.0f;
 
     m_pDevice->CreateShaderResourceView(pTexture->m_pResource.Get(), &descSRV, m_uiCurrentDecriptorOffset);
 
@@ -530,7 +530,19 @@ D3DTexture* D3DBufferManager::LoadTextureFromDDSFile(std::string a_sPath, std::s
     pTexture->m_oSRVView = descSRV;
     pTexture->m_uiWidth = oDDSTextureHeader.width;
     pTexture->m_uiHeight = oDDSTextureHeader.height;
-    pTexture->m_uiMipCount = 1;
+    // https://learn.microsoft.com/en-us/windows/win32/direct3ddds/dx-graphics-dds-pguide#dds-file-layout
+    if (oPixelFormat.flags & DDS_FOURCC)
+    {
+        if(eTextureFormat == DXGI_FORMAT_BC1_UNORM || eTextureFormat == DXGI_FORMAT_BC1_UNORM_SRGB || eTextureFormat == DXGI_FORMAT_BC4_UNORM || eTextureFormat == DXGI_FORMAT_BC4_SNORM)
+            pTexture->m_uiRowPitch = ((oDDSTextureHeader.width + 3) / 4) * 8;
+        else
+            pTexture->m_uiRowPitch = ((oDDSTextureHeader.width + 3) / 4) * 16;
+    }
+    else
+    {
+        pTexture->m_uiRowPitch = (oDDSTextureHeader.width * oDDSTextureHeader.ddspf.size + 7) / 8;
+    }
+    pTexture->m_uiMipCount = oDDSTextureHeader.mipMapCount;
     pTexture->m_eFormat = eTextureFormat;
     pTexture->m_uiResourceSize = allocationInfo.SizeInBytes;
     pTexture->m_eCurrentState = D3D12_RESOURCE_STATE_COPY_DEST;
