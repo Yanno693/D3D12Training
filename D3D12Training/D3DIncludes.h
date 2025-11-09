@@ -20,11 +20,28 @@
 #include <d3d12sdklayers.h>
 #include <wrl.h>
 
-#include <pix.h>
+#include "pix/pix3.h"
 
 #define BACK_BUFFER_FORMAT DXGI_FORMAT_R16G16B16A16_FLOAT
 #define DEPTH_BUFFER_FORMAT DXGI_FORMAT_D32_FLOAT
 #define UPLOAD_BUFFER_SIZE (1024 * 1024 * 64) 
+
+#define PIX_COLOR_BLACK      PIX_COLOR(  0,   0,   0)
+#define PIX_COLOR_GREY       PIX_COLOR(128, 128, 128)
+#define PIX_COLOR_WHITE      PIX_COLOR(255, 255, 255)
+#define PIX_COLOR_RED        PIX_COLOR(255,   0,   0)
+#define PIX_COLOR_GREEN      PIX_COLOR(  0, 255,   0)
+#define PIX_COLOR_BLUE       PIX_COLOR(  0,   0, 255)
+#define PIX_COLOR_DARKRED    PIX_COLOR(128,   0,   0)
+#define PIX_COLOR_DARKGREEN  PIX_COLOR(  0, 128,   0)
+#define PIX_COLOR_DARKBLUE   PIX_COLOR(  0,   0, 128)
+#define PIX_COLOR_LIGHTRED   PIX_COLOR(255, 128, 128)
+#define PIX_COLOR_LIGHTGREEN PIX_COLOR(128, 255, 128)
+#define PIX_COLOR_LIGHTBLUE  PIX_COLOR(  0, 128, 255)
+#define PIX_COLOR_YELLOW     PIX_COLOR(255, 255,   0)
+#define PIX_COLOR_ORANGE     PIX_COLOR(255, 128,   0)
+#define PIX_COLOR_PURPLE     PIX_COLOR(255,   0, 255)
+#define PIX_COLOR_PINK       PIX_COLOR(255,   0, 128)
 
 static size_t GetSizeFromDXGIFormat(DXGI_FORMAT fmt)
 {

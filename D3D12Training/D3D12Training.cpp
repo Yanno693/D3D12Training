@@ -399,7 +399,7 @@ void initD3DRenderTargets()
     g_D3DBackBuffers[1].SetDebugName(L"Back Buffer 1");
 }
 
-void WaitEndOfCommandList() // TODO : Learn how fences really work
+void WaitEndOfCommandList() // TODO : Learn how fences really work, this MJP guy knows stuff
 {   
     UINT64 fence = g_FenceValue;
 
@@ -455,7 +455,9 @@ void DrawImGUI()
 // Draw to back buffer
 void RenderImGUI()
 {
+    PIXBeginEvent(g_defaultCommandList.Get(), PIX_COLOR_ORANGE, "IMGUI");
     ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), g_defaultCommandList.Get());
+    PIXEndEvent(g_defaultCommandList.Get());
 }
 
 void UploadTextures()
@@ -468,7 +470,9 @@ void UploadTextures()
             assert(0);
         }
 
+        PIXBeginEvent(g_defaultCommandList.Get(), PIX_COLOR_LIGHTBLUE, "Texture Upload");
         g_D3DBufferManager.UploadTextures(g_defaultCommandList.Get());
+        PIXEndEvent(g_defaultCommandList.Get());
 
         if (!SUCCEEDED(g_defaultCommandList->Close()))
         {
@@ -507,6 +511,7 @@ void RenderBegin()
 
 void RenderLoop()
 {
+    PIXBeginEvent(g_defaultCommandList.Get(), PIX_COLOR_WHITE, "Scene Render");
     FLOAT color[4] = {
         0.0f,
         0.0f,
@@ -573,6 +578,7 @@ void RenderLoop()
         RenderImGUI();
 
     g_D3DBackBuffers[BackBufferIndex].TransisitonState(g_defaultCommandList.Get(), D3D12_RESOURCE_STATE_COMMON);
+    PIXEndEvent(g_defaultCommandList.Get());
 }
 
 void RenderEnd()
@@ -618,7 +624,6 @@ int main()
 
     createD3DWindow(g_ScreenResolution.width, g_ScreenResolution.height);
 
-    //initD3DSwapchain(g_ScreenResolution.width, g_ScreenResolution.height);
     D3DDevice::InitializeSwapchain(g_ScreenResolution.width, g_ScreenResolution.height, g_windowHandle, g_commandQueue.Get());
 
     initD3DRenderTargets();
