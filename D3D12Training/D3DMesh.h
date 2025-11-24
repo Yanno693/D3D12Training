@@ -8,6 +8,7 @@
 #include "D3DShaderManager.h"
 #include "D3DBufferManager.h"
 
+#include "GameMaterial.h"
 #include "ShaderShared.h"
 
 #include "tinyxml2.h"
@@ -56,11 +57,13 @@ private:
 	UINT m_uiTriangleCount = 0; // Number of triangle in the mesh
 	UINT m_uiIndicesCount = 0; // Number of indices for the mesh vertices
 
+
 public:
 	// Raster Stuff
 	D3DVertexBuffer m_oVertexBuffer; // Vertex Buffer of the Mesh
 	D3DIndexBuffer m_oIndexBuffer; // Index buffer ot the mesh
 	D3DConstantBuffer m_oInstanceBuffer; // Instance buffer of the mesh
+	GameMaterial* m_pMaterial; // Material (basically a list of textures for now right now)
 	D3DShaderPair* m_pShader = nullptr;
 
 	// Ray Tracing Stuff
@@ -84,6 +87,7 @@ public:
 
 	void SetPosition(const GamePosition& a_rPosition);
 	GamePosition GetPosition();
+
 	void SetScale(const GameScale& a_rScale);
 	GameScale GetScale();
 

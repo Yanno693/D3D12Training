@@ -2,6 +2,9 @@
     <model>cube</model>
     <shader>basicsolid</shader>
     <rtshader>basicsolidrt</rtshader>
+    <material>
+        <albedo>test</albedo>
+    </material>
     <transform>
         <position>
             <x>0</x>

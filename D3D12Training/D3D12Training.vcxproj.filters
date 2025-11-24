@@ -126,6 +126,9 @@
     <ClCompile Include="GameInputs.cpp">
       <Filter>Source files</Filter>
     </ClCompile>
+    <ClCompile Include="GameMaterial.cpp">
+      <Filter>Source files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="D3DRenderTarget.h">
@@ -238,6 +241,9 @@
     </ClInclude>
     <ClInclude Include="pix\PIXEventsLegacy.h">
       <Filter>Header files\pix</Filter>
+    </ClInclude>
+    <ClInclude Include="GameMaterial.h">
+      <Filter>Header files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

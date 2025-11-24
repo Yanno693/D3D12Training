@@ -10,6 +10,7 @@
 #include <unordered_map>
 #include <map>
 #include <queue>
+#include <deque>
 #include <utility>
 
 class D3DBufferManager
@@ -28,10 +29,11 @@ private:
 	D3DTexture* LoadTextureFromDDSFile(std::string a_sPath, std::string a_sName);
 
 	std::map<std::string, D3DTexture*> m_oLoadedTexture; // Texture loaded in GPU memory
-	std::queue<std::pair<std::string, D3DTexture*>> m_oTextureToLoad; // Texture that need to be loaded to GPU memory
+	std::deque<std::pair<std::string, D3DTexture*>> m_oTextureToLoad; // Texture that need to be loaded to GPU memory
 
 	D3DGenericBuffer* m_pUploadBuffer; // CPU Side buffer used for uploading textures
 	UINT m_uiCurrentUploadBufferAllocation = 0; // Current occupation of the Upload Buffer, it must be smaller that the buffer size
+	D3DTexture* GetLoadingTexture(std::string a_sName); // Get a texture already requested for loading
 
 public:
 
@@ -45,6 +47,8 @@ public:
 	void InitializeTexture(D3DTexture* a_pTexture, UINT const a_uiWidth, UINT const a_uiHeight, DXGI_FORMAT const a_eTextureFormat, bool a_bIsDepth = false, D3D12_RESOURCE_STATES const a_eDefaultState = D3D12_RESOURCE_STATE_COMMON);
 	D3DTexture* GetTexture(std::string a_sName); // Get a texture from the loaded textures
 	D3DTexture* RequestTexture(std::string a_sName); // Get a texture from the loaded textures, and load it if not present
+	D3DTexture* CreateTextureFromColor(std::string a_sName, float* a_pRGBAColor);
+	D3DTexture* CreateTextureFromColor(std::string a_sName, float a_fR, float a_fG, float a_fB, float a_fA);
 
 	void RequestDescriptor(D3D12_CPU_DESCRIPTOR_HANDLE& out_rCPUHandle, D3D12_GPU_DESCRIPTOR_HANDLE & out_rCGUHandle);
 

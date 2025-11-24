@@ -12,6 +12,16 @@
 
 #define MESH_SHADER_GROUP_SIZE 2
 
+/*
+*/
+SamplerState DefaultSampler
+{
+    Filter = MIN_MAG_MIP_ANISOTROPIC;
+    AddressU = Wrap;
+    AddressV = Wrap;
+    AddressW = Wrap;
+};
+
 // https://gist.github.com/keijiro/ee7bc388272548396870
 float nrand(float2 uv)
 {

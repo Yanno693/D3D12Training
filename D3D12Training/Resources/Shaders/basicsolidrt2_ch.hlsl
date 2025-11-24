@@ -5,6 +5,8 @@ RWTexture2D<float4> uav : register(u0);
 StructuredBuffer<Vertex> VertexBuffer : register(t2);
 StructuredBuffer<uint16_t> IndexBuffer : register(t3);
 
+Texture2D<float4> Albedo : register(t10);
+
 [shader("closesthit")]
 void basicsolidrt2_hit(inout RTPayload payload, BuiltInTriangleIntersectionAttributes attribs)
 {

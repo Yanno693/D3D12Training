@@ -455,7 +455,7 @@ void DrawImGUI()
 // Draw to back buffer
 void RenderImGUI()
 {
-    PIXBeginEvent(g_defaultCommandList.Get(), PIX_COLOR_ORANGE, "IMGUI");
+    PIXBeginEvent(g_defaultCommandList.Get(), PIX_COLOR_ORANGE, "ImGUI");
     ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), g_defaultCommandList.Get());
     PIXEndEvent(g_defaultCommandList.Get());
 }
@@ -699,6 +699,11 @@ int main()
 
     g_D3DBufferManager.RequestTexture("test");
     g_D3DBufferManager.RequestTexture("test2");
+
+    float color[4] = {0.5, 0 , 0.5, 1};
+
+    g_D3DBufferManager.RequestTexture("test2");
+    g_D3DBufferManager.CreateTextureFromColor("white", color);
 
     g_D3DRenderTargetManager.InitializeRenderTargetFromTexture(mainRT, test_texture);
     g_D3DRenderTargetManager.InitializeDepthBufferFromTexture(mainDepth, test_depth);

@@ -42,6 +42,31 @@ void D3DMesh::ParseObject(std::string a_sPath)
 		m_pHitShader = (D3DHitShader*)g_D3DShaderManager.RequestRTShaderV2(pXMLRTShader->GetText(), D3D_RT_SHADER_TYPE::HIT);
 	}
 
+	// Texture Loading
+
+	m_pMaterial = new GameMaterial();
+	XMLElement* pXMLMaterial = pXMLRoot->FirstChildElement("material");
+	if (pXMLMaterial)
+	{
+		XMLElement* pXMLAlbedo = pXMLMaterial->FirstChildElement("albedo");
+		if (pXMLAlbedo)
+		{
+			m_pMaterial->SetTexture(
+				GameMaterialTextureIndex::Albedo,
+				g_D3DBufferManager.RequestTexture(pXMLAlbedo->GetText())
+			);
+		}
+
+		XMLElement* pXMLNormal = pXMLMaterial->FirstChildElement("normal");
+		if (pXMLNormal)
+		{
+			m_pMaterial->SetTexture(
+				GameMaterialTextureIndex::Normal,
+				g_D3DBufferManager.RequestTexture(pXMLNormal->GetText())
+			);
+		}
+	}
+
 	XMLElement* pXMLTransform = pXMLRoot->FirstChildElement("transform");
 	assert(pXMLTransform != nullptr);
 

@@ -5,7 +5,7 @@ This renderer uses DXR.
 ## Prerequisites
 - Windows 10 up to date or Windows 11
 - Visual Studio 2022
-- DXR compatible graphics card, up to Shader Model 6.3, feature level 12.2 (DirectX 12 Ultimate)
+- DXR compatible graphics card, at least Shader Model 6.3, feature level 12.2 (DirectX 12 Ultimate)
 ## Features
 - Basic graphic pipeline
 - Basic Ray Tracing pipeline with DXR
@@ -30,4 +30,4 @@ This renderer uses DXR.
 - Niels Lohmann : [JSON for modern C++](https://json.nlohmann.me/)
 - [DDS file format](https://learn.microsoft.com/en-us/windows/win32/direct3ddds/dx-graphics-dds-pguide) and [Texture Block Compression in Direct3D 11](https://learn.microsoft.com/en-us/windows/win32/direct3d11/texture-block-compression-in-direct3d-11)
 - A simple and versatile image editor : [Paint.net](https://www.getpaint.net/)
-- DDS Header gathered from [DirectXTex from Github](https://github.com/microsoft/DirectXTex)
+- DDS Header gathered from [DirectXTex on Github](https://github.com/microsoft/DirectXTex)

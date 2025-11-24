@@ -32,19 +32,12 @@ void D3DBufferManager::Initialize(ID3D12Device* a_pDevice, int a_iNbDecriptors)
 
 void D3DBufferManager::InitializeConstantBuffer(D3DConstantBuffer* a_pConstantBuffer, UINT const a_uiSizeInBytes, D3D12_RESOURCE_STATES const a_eDefaultState)
 {
-    UINT ui256MultipleSize = max(256, 256 * ((a_uiSizeInBytes / 256) + 1)); // TODO : COrrect when it's already multiple of 256
+    UINT ui256MultipleSize = max(
+        D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT,
+        D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT * ceil(a_uiSizeInBytes / (float)(D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT))
+    );
     
     assert(m_pDevice != nullptr);
-
-    D3D12_HEAP_DESC heapDesc = {};
-    heapDesc.Alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
-    heapDesc.Flags = D3D12_HEAP_FLAG_NONE;
-    heapDesc.SizeInBytes = ui256MultipleSize;
-    heapDesc.Properties.Type = D3D12_HEAP_TYPE_UPLOAD;
-    heapDesc.Properties.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-    heapDesc.Properties.CreationNodeMask = 0;
-    heapDesc.Properties.VisibleNodeMask = 0;
-    heapDesc.Properties.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
 
     D3D12_RESOURCE_DESC resourceDesc = {};
     resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
@@ -57,6 +50,19 @@ void D3DBufferManager::InitializeConstantBuffer(D3DConstantBuffer* a_pConstantBu
     resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
     resourceDesc.SampleDesc.Count = 1;
     resourceDesc.SampleDesc.Quality = 0;
+
+    D3D12_RESOURCE_ALLOCATION_INFO allocationInfo = m_pDevice->GetResourceAllocationInfo(0, 1, &resourceDesc);
+    assert(allocationInfo.SizeInBytes != UINT64_MAX);
+
+    D3D12_HEAP_DESC heapDesc = {};
+    heapDesc.Alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
+    heapDesc.Flags = D3D12_HEAP_FLAG_NONE;
+    heapDesc.SizeInBytes = allocationInfo.SizeInBytes;
+    heapDesc.Properties.Type = D3D12_HEAP_TYPE_UPLOAD;
+    heapDesc.Properties.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+    heapDesc.Properties.CreationNodeMask = 0;
+    heapDesc.Properties.VisibleNodeMask = 0;
+    heapDesc.Properties.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
 
     if (!SUCCEEDED(m_pDevice->CreateCommittedResource(&heapDesc.Properties, heapDesc.Flags, &resourceDesc, a_eDefaultState, NULL, IID_PPV_ARGS(&a_pConstantBuffer->m_pResource))))
     {
@@ -316,15 +322,118 @@ D3DTexture* D3DBufferManager::GetTexture(std::string a_sName)
     return m_oLoadedTexture[a_sName];
 }
 
+D3DTexture* D3DBufferManager::GetLoadingTexture(std::string a_sName)
+{
+    for (auto pIterator = m_oTextureToLoad.begin(); pIterator != m_oTextureToLoad.end(); pIterator++)
+        if (pIterator->first == a_sName)
+            return pIterator->second;
+
+    return nullptr;
+}
+
 D3DTexture* D3DBufferManager::RequestTexture(std::string a_sName)
 {
     D3DTexture* pTexture = GetTexture(a_sName);
 
     if (pTexture == nullptr)
     {
-        std::string sPath = "./Textures/" + a_sName + ".dds";
-        pTexture = LoadTextureFromDDSFile(sPath, a_sName);
+        pTexture = GetLoadingTexture(a_sName);
+
+        if (pTexture == nullptr)
+        {
+            std::string sPath = "./Textures/" + a_sName + ".dds";
+            pTexture = LoadTextureFromDDSFile(sPath, a_sName);
+        }
     }
+
+    return pTexture;
+}
+
+D3DTexture* D3DBufferManager::CreateTextureFromColor(std::string a_sName, float a_fR, float a_fG, float a_fB, float a_fA)
+{
+    float afColor[4] = { a_fR, a_fG, a_fB, a_fA };
+
+    return CreateTextureFromColor(a_sName, afColor);
+}
+
+D3DTexture* D3DBufferManager::CreateTextureFromColor(std::string a_sName, float* a_pRGBAColor)
+{
+    D3DTexture* pTexture = new D3DTexture;
+
+    const DXGI_FORMAT c_eTextureFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+
+    // Texture Resource initialization
+    D3D12_RESOURCE_DESC resourceDesc = {};
+    resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+    resourceDesc.Format = c_eTextureFormat;
+    resourceDesc.MipLevels = 6; // 1 + log2(32), to count the mips
+    resourceDesc.Alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
+    resourceDesc.Height = 32;
+    resourceDesc.Width = 32;
+    resourceDesc.DepthOrArraySize = 1;
+    resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+    resourceDesc.SampleDesc.Count = 1;
+    resourceDesc.SampleDesc.Quality = 0;
+    resourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+
+    D3D12_RESOURCE_ALLOCATION_INFO allocationInfo = m_pDevice->GetResourceAllocationInfo(0, 1, &resourceDesc);
+    assert(allocationInfo.SizeInBytes != UINT64_MAX);
+
+    D3D12_HEAP_DESC heapDesc = {};
+    heapDesc.Alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
+    heapDesc.Flags = D3D12_HEAP_FLAG_NONE;
+    heapDesc.SizeInBytes = allocationInfo.SizeInBytes;
+    heapDesc.Properties.Type = D3D12_HEAP_TYPE_DEFAULT;
+    heapDesc.Properties.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+    heapDesc.Properties.CreationNodeMask = 0;
+    heapDesc.Properties.VisibleNodeMask = 0;
+    heapDesc.Properties.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+
+    if (!SUCCEEDED(m_pDevice->CreateCommittedResource(&heapDesc.Properties, heapDesc.Flags, &resourceDesc, D3D12_RESOURCE_STATE_COPY_DEST, nullptr, IID_PPV_ARGS(&pTexture->m_pResource))))
+    {
+        assert(0);
+    }
+
+    D3D12_SHADER_RESOURCE_VIEW_DESC descSRV = {};
+
+    descSRV.Format = c_eTextureFormat;
+    descSRV.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+    descSRV.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+    descSRV.Texture2D.MostDetailedMip = 0;
+    descSRV.Texture2D.MipLevels = -1;
+    descSRV.Texture2D.PlaneSlice = 0;
+    descSRV.Texture2D.ResourceMinLODClamp = 0.0f;
+
+    m_pDevice->CreateShaderResourceView(pTexture->m_pResource.Get(), &descSRV, m_uiCurrentDecriptorOffset);
+
+    pTexture->m_eSRVGPUHandle = m_uiCurrentGPUDecriptorOffset;
+    pTexture->m_oSRVView = descSRV;
+    pTexture->m_uiWidth = 32;
+    pTexture->m_uiHeight = 32;
+    pTexture->m_uiRowPitch = (32 * 32 + 7) / 8; // (width * bits_per_pixel + 7) / 8, https://learn.microsoft.com/en-us/windows/win32/direct3ddds/dx-graphics-dds-pguide#dds-file-layout
+    pTexture->m_uiMipCount = 6;
+    pTexture->m_eFormat = c_eTextureFormat;
+    pTexture->m_uiResourceSize = allocationInfo.SizeInBytes;
+    pTexture->m_eCurrentState = D3D12_RESOURCE_STATE_COPY_DEST;
+
+    IncrementOffset();
+
+    pTexture->m_pUploadData = new char[allocationInfo.SizeInBytes];
+    
+    char acColor[4] = {
+        a_pRGBAColor[0] * 255,
+        a_pRGBAColor[1] * 255,
+        a_pRGBAColor[2] * 255,
+        a_pRGBAColor[3] * 255 
+    };
+
+    for (UINT64 i = 0; i < allocationInfo.SizeInBytes; i += 4)
+        memcpy(&pTexture->m_pUploadData[i], acColor, sizeof(acColor));
+
+    std::wstring sWName(a_sName.begin(), a_sName.end());
+    pTexture->SetDebugName(sWName.c_str());
+
+    m_oTextureToLoad.push_back(std::make_pair(a_sName, pTexture));
 
     return pTexture;
 }
@@ -354,7 +463,7 @@ void D3DBufferManager::UploadTextures(ID3D12GraphicsCommandList* a_pCommandList)
         {
 
             auto oTexture = m_oTextureToLoad.front();
-            m_oTextureToLoad.pop();
+            m_oTextureToLoad.pop_front();
 
             m_pUploadBuffer->WriteData(oTexture.second->m_pUploadData, uiNextTextureSize, m_uiCurrentUploadBufferAllocation);
             delete[] oTexture.second->m_pUploadData;
@@ -457,7 +566,6 @@ DXGI_FORMAT GetDXGIFromDDSFormat(const DirectX::DDS_PIXELFORMAT& a_roPixelFormat
 
         if (a_roPixelFormat.fourCC == DirectX::DDSPF_BC5_SNORM.fourCC)
             return DXGI_FORMAT_BC5_SNORM;
-        
     }
 
     return DXGI_FORMAT_UNKNOWN;
@@ -556,7 +664,7 @@ D3DTexture* D3DBufferManager::LoadTextureFromDDSFile(std::string a_sPath, std::s
     std::wstring sWName(a_sName.begin(), a_sName.end());
     pTexture->SetDebugName(sWName.c_str());
 
-    m_oTextureToLoad.push(std::make_pair(a_sName, pTexture));
+    m_oTextureToLoad.push_back(std::make_pair(a_sName, pTexture));
 
     return pTexture;
 }
