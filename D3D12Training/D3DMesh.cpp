@@ -211,8 +211,15 @@ void D3DMesh::ParseModelGLTF(std::string const a_sPath, std::string const a_sPat
 
 void D3DMesh::CreateGPUBuffers()
 {
+
+	/*
 	UINT uiVertexBufferSize = m_oMeshPositionData.size + m_oMeshNormalData.size;
 	UINT uiVertexStride = m_oMeshPositionData.stride + m_oMeshNormalData.stride;
+
+	*/
+	UINT uiVertexBufferSize = m_oMeshPositionData.size + m_oMeshNormalData.size + m_oMeshUVData.size;
+	UINT uiVertexStride = m_oMeshPositionData.stride + m_oMeshNormalData.stride + m_oMeshUVData.stride;
+
 	char* oVertexData = (char*)malloc(uiVertexBufferSize);
 	assert(oVertexData != nullptr);
 
@@ -220,10 +227,26 @@ void D3DMesh::CreateGPUBuffers()
 
 	for (UINT i = 0; i < m_oMeshPositionData.count; i++)
 	{
-		memcpy(oVertexDataIt, m_oMeshPositionData.ptr + i * m_oMeshPositionData.stride, m_oMeshPositionData.stride);
-		memcpy(oVertexDataIt + m_oMeshPositionData.stride, m_oMeshNormalData.ptr + i * m_oMeshNormalData.stride, m_oMeshNormalData.stride);
+		memcpy(
+			oVertexDataIt,
+			m_oMeshPositionData.ptr + i * m_oMeshPositionData.stride,
+			m_oMeshPositionData.stride
+		);
 
-		oVertexDataIt += m_oMeshPositionData.stride + m_oMeshNormalData.stride;
+		memcpy(
+			oVertexDataIt + m_oMeshPositionData.stride,
+			m_oMeshNormalData.ptr + i * m_oMeshNormalData.stride,
+			m_oMeshNormalData.stride
+		);
+
+		memcpy(
+			oVertexDataIt + m_oMeshPositionData.stride + m_oMeshNormalData.stride,
+			m_oMeshUVData.ptr + i * m_oMeshUVData.stride,
+			m_oMeshUVData.stride);
+		/*
+		*/
+
+		oVertexDataIt += uiVertexStride;
 	}
 
 	g_D3DBufferManager.InitializeVertexBuffer(&m_oVertexBuffer, uiVertexBufferSize, uiVertexStride);
@@ -297,12 +320,35 @@ void D3DMesh::CreatePSO(ID3D12Device* a_pDevice)
 	oPointLightsRootParameter.Descriptor.RegisterSpace = 0;
 	oPointLightsRootParameter.Descriptor.ShaderRegister = 1;
 
-	D3D12_ROOT_PARAMETER pVBRootParameters[] = { oVBSceneRootParameter , oVBPerObjectRootParameter, oPointLightsRootParameter };
+	D3D12_DESCRIPTOR_RANGE oSRVRange = {};
+	oSRVRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+	oSRVRange.NumDescriptors = 1;
+	oSRVRange.BaseShaderRegister = 10;
+	oSRVRange.RegisterSpace = 0;
+
+	D3D12_ROOT_PARAMETER oAlbedoRootParameter = {};
+	oAlbedoRootParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+	oAlbedoRootParameter.DescriptorTable.NumDescriptorRanges = 1;
+	oAlbedoRootParameter.DescriptorTable.pDescriptorRanges = &oSRVRange;
+	oAlbedoRootParameter.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+
+	D3D12_ROOT_PARAMETER pVBRootParameters[] = { oVBSceneRootParameter , oVBPerObjectRootParameter, oPointLightsRootParameter, oAlbedoRootParameter };
+
+	D3D12_STATIC_SAMPLER_DESC oLinearSamplerDesc = {};
+	oLinearSamplerDesc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+	oLinearSamplerDesc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+	oLinearSamplerDesc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+	oLinearSamplerDesc.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+	oLinearSamplerDesc.RegisterSpace = 0;
+	oLinearSamplerDesc.ShaderRegister = 0;
+	oLinearSamplerDesc.MinLOD = 0;
+	oLinearSamplerDesc.MaxLOD = D3D12_FLOAT32_MAX;
+	oLinearSamplerDesc.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
 
 	D3D12_ROOT_SIGNATURE_DESC rsDesc = {};
 	rsDesc.NumParameters = _countof(pVBRootParameters);
-	rsDesc.NumStaticSamplers = 0;
-	rsDesc.pStaticSamplers = NULL;
+	rsDesc.NumStaticSamplers = 1;
+	rsDesc.pStaticSamplers = &oLinearSamplerDesc;
 	rsDesc.pParameters = pVBRootParameters;
 	rsDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
 
@@ -361,7 +407,6 @@ void D3DMesh::CreatePSO(ID3D12Device* a_pDevice)
 		assert(0);
 	}
 }
-
 
 void D3DMesh::InitializeDebug(ID3D12Device5* a_pDevice, bool a_bUsesRayTracing)
 {
@@ -497,6 +542,13 @@ void D3DMesh::Draw(ID3D12GraphicsCommandList* a_pCommandList)
 	a_pCommandList->SetGraphicsRootConstantBufferView(0, g_GameScene.m_pSceneConstantBuffer.m_pResource->GetGPUVirtualAddress());
 	a_pCommandList->SetGraphicsRootConstantBufferView(1, m_oInstanceBuffer.m_pResource->GetGPUVirtualAddress());
 	a_pCommandList->SetGraphicsRootShaderResourceView(2, g_GameScene.m_pPointLightBuffer.m_pResource->GetGPUVirtualAddress());
+	
+	D3DTexture* pAlbedoTexture = m_pMaterial->GetTexture(GameMaterialTextureIndex::Albedo);
+	if(pAlbedoTexture)
+		a_pCommandList->SetGraphicsRootDescriptorTable(3, m_pMaterial->GetTexture(GameMaterialTextureIndex::Albedo)->m_eSRVGPUHandle);
+	else
+		a_pCommandList->SetGraphicsRootDescriptorTable(3, g_D3DBufferManager.RequestTexture("white")->m_eSRVGPUHandle);
+
 
 	D3D12_RECT rect;
 	rect.left = 0;

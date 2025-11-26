@@ -71,7 +71,7 @@ void D3DDevice::InitializeDevice()
         s_device.Get()->SetName(L"D3D Raster and Ray Tracing Device");
         s_bIsRayTracingEnabled = true;
     }
-    //s_bIsRayTracingEnabled = false;
+    s_bIsRayTracingEnabled = false;
 
     // Initialize context
 

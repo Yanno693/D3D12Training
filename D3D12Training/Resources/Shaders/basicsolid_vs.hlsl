@@ -4,6 +4,7 @@ struct VertexOutput
 {
     float4 position : SV_POSITION;
     float3 normal : NORMAL;
+    float2 uv : TEXCOORD;
 };
 
 VertexOutput main(Vertex input)
@@ -14,6 +15,7 @@ VertexOutput main(Vertex input)
 
     v.position = mul(oViewProjMatrix, ViewSpacePos);
     v.normal = input.normal;
+    v.uv = input.uv;
     //v.position /= v.position.w; // Semms like i don't need this line ?
     
     return v;

@@ -488,28 +488,60 @@ void D3DBufferManager::UploadTextures(ID3D12GraphicsCommandList* a_pCommandList)
         auto oTexture = oReadyToLoad.front();
         D3DTexture* pTexture = oTexture.second;
         oReadyToLoad.pop();
-        
-        D3D12_PLACED_SUBRESOURCE_FOOTPRINT oOffset = {};
-        oOffset.Footprint.Depth = 1;
-        oOffset.Footprint.Width = pTexture->GetWidth();
-        oOffset.Footprint.Height = pTexture->GetHeight();
-        oOffset.Footprint.Format = pTexture->GetFormat();
-        oOffset.Footprint.RowPitch = pTexture->GetRowPitch();
 
-        D3D12_TEXTURE_COPY_LOCATION oSrcTex = {};
-        oSrcTex.pResource = m_pUploadBuffer->m_pResource.Get();
-        oSrcTex.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
-        oSrcTex.PlacedFootprint = oOffset;
-        oSrcTex.PlacedFootprint.Offset = uiUploadPointer;
+        /*
+        void GetCopyableFootprints(
+            [in]            const D3D12_RESOURCE_DESC * pResourceDesc,
+            [in]            UINT                               FirstSubresource,
+            [in]            UINT                               NumSubresources,
+            UINT64                             BaseOffset,
+            [out, optional] D3D12_PLACED_SUBRESOURCE_FOOTPRINT * pLayouts,
+            [out, optional] UINT * pNumRows,
+            [out, optional] UINT64 * pRowSizeInBytes,
+            [out, optional] UINT64 * pTotalBytes
+        );
+        */
 
-        D3D12_TEXTURE_COPY_LOCATION oDstTex;
-        oDstTex.pResource = pTexture->m_pResource.Get();
-        oDstTex.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
-        oDstTex.SubresourceIndex = 0;
-        oDstTex.PlacedFootprint = oOffset;
-        oDstTex.PlacedFootprint.Offset = 0;
+        // Get some offset data for each mip to copy
+        D3D12_PLACED_SUBRESOURCE_FOOTPRINT* aoTextureFootprints = new D3D12_PLACED_SUBRESOURCE_FOOTPRINT[pTexture->GetMipCount()];
+        UINT* pRowPitches = nullptr;
+        //UINT64* pRowSizeInBytes = new UINT64[pTexture->GetMipCount()];
 
-        a_pCommandList->CopyTextureRegion(&oDstTex, 0, 0, 0, &oSrcTex, nullptr);
+        D3D12_RESOURCE_DESC oTextureDesc = pTexture->m_pResource->GetDesc();
+
+        m_pDevice->GetCopyableFootprints(
+            &oTextureDesc,
+            0,
+            pTexture->GetMipCount(),
+            0,
+            aoTextureFootprints,
+            nullptr,
+            nullptr, // pRowSizeInBytes,
+            nullptr
+        );
+
+        // Can't use CopyTile to copy mipmaps, gotta copy them one by one with CopyTextureRegion
+        for (UINT iMipMapIndex = 0; iMipMapIndex < pTexture->GetMipCount(); iMipMapIndex++)
+        {
+            D3D12_TEXTURE_COPY_LOCATION oSrcTex = {};
+            oSrcTex.pResource = m_pUploadBuffer->m_pResource.Get();
+            oSrcTex.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+            oSrcTex.PlacedFootprint = aoTextureFootprints[iMipMapIndex];
+            oSrcTex.PlacedFootprint.Offset += uiUploadPointer;
+            //oSrcTex.PlacedFootprint.Footprint.RowPitch = pRowSizeInBytes[iMipMapIndex];
+            // TODO : fix
+
+            D3D12_TEXTURE_COPY_LOCATION oDstTex;
+            oDstTex.pResource = pTexture->m_pResource.Get();
+            oDstTex.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+            oDstTex.PlacedFootprint = aoTextureFootprints[iMipMapIndex];
+            oDstTex.SubresourceIndex = iMipMapIndex;
+
+            a_pCommandList->CopyTextureRegion(&oDstTex, 0, 0, 0, &oSrcTex, nullptr);
+        }
+
+        delete[] aoTextureFootprints;
+        //delete[] pRowSizeInBytes; 
         
         m_oLoadedTexture[oTexture.first] = pTexture;
         pTexture->TransitionState(a_pCommandList, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
@@ -623,7 +655,6 @@ D3DTexture* D3DBufferManager::LoadTextureFromDDSFile(std::string a_sPath, std::s
     }
 
     D3D12_SHADER_RESOURCE_VIEW_DESC descSRV = {};
-
     descSRV.Format = eTextureFormat;
     descSRV.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
     descSRV.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
@@ -638,8 +669,8 @@ D3DTexture* D3DBufferManager::LoadTextureFromDDSFile(std::string a_sPath, std::s
     pTexture->m_oSRVView = descSRV;
     pTexture->m_uiWidth = oDDSTextureHeader.width;
     pTexture->m_uiHeight = oDDSTextureHeader.height;
-    // https://learn.microsoft.com/en-us/windows/win32/direct3ddds/dx-graphics-dds-pguide#dds-file-layout
-    if (oPixelFormat.flags & DDS_FOURCC)
+
+    if (oPixelFormat.flags & DDS_FOURCC) // https://learn.microsoft.com/en-us/windows/win32/direct3ddds/dx-graphics-dds-pguide#dds-file-layout
     {
         if(eTextureFormat == DXGI_FORMAT_BC1_UNORM || eTextureFormat == DXGI_FORMAT_BC1_UNORM_SRGB || eTextureFormat == DXGI_FORMAT_BC4_UNORM || eTextureFormat == DXGI_FORMAT_BC4_SNORM)
             pTexture->m_uiRowPitch = ((oDDSTextureHeader.width + 3) / 4) * 8;

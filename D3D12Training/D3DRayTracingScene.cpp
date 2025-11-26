@@ -317,10 +317,21 @@ void D3DRayTracingScene::CreateRayTracingRootSignatures(ID3D12Device5* a_pDevice
 	Microsoft::WRL::ComPtr<ID3DBlob> rsBlob = nullptr;
 	Microsoft::WRL::ComPtr<ID3DBlob> errorBlob = nullptr;
 
+	D3D12_STATIC_SAMPLER_DESC oLinearSamplerDesc = {};
+	oLinearSamplerDesc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+	oLinearSamplerDesc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+	oLinearSamplerDesc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+	oLinearSamplerDesc.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+	oLinearSamplerDesc.RegisterSpace = 0;
+	oLinearSamplerDesc.ShaderRegister = 0;
+	oLinearSamplerDesc.MinLOD = 0;
+	oLinearSamplerDesc.MaxLOD = D3D12_FLOAT32_MAX;
+	oLinearSamplerDesc.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+
 	D3D12_ROOT_SIGNATURE_DESC rsDesc = {};
 	rsDesc.NumParameters = _countof(pRayTracingRootParameters);
-	rsDesc.NumStaticSamplers = 0;
-	rsDesc.pStaticSamplers = NULL;
+	rsDesc.NumStaticSamplers = 1;
+	rsDesc.pStaticSamplers = &oLinearSamplerDesc;
 	rsDesc.pParameters = pRayTracingRootParameters;
 	rsDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
 
@@ -357,14 +368,6 @@ void D3DRayTracingScene::CreateRayTracingRootSignatures(ID3D12Device5* a_pDevice
 	oIndexBufferRootParameter.Descriptor.ShaderRegister = 3; // I'll leave slot 1 for some Scene parameters
 	oIndexBufferRootParameter.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
-	/*
-	D3D12_ROOT_PARAMETER oAlbedoRootParameter = {};
-	oAlbedoRootParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
-	oAlbedoRootParameter.Descriptor.RegisterSpace = 0;
-	oAlbedoRootParameter.Descriptor.ShaderRegister = 10;
-	oAlbedoRootParameter.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-	*/
-
 	D3D12_DESCRIPTOR_RANGE oSRVRange = {};
 	oSRVRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
 	oSRVRange.NumDescriptors = 1;
@@ -376,11 +379,6 @@ void D3DRayTracingScene::CreateRayTracingRootSignatures(ID3D12Device5* a_pDevice
 	oAlbedoRootParameter.DescriptorTable.NumDescriptorRanges = 1;
 	oAlbedoRootParameter.DescriptorTable.pDescriptorRanges = &oSRVRange;
 	oAlbedoRootParameter.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-
-
-	//oAlbedoRootParameter.Descriptor.RegisterSpace = 0;
-	//oAlbedoRootParameter.Descriptor.ShaderRegister = 10;
-	//oAlbedoRootParameter.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
 	D3D12_ROOT_PARAMETER pRayTracingLocalRootParameters[] = { oVertexBufferRootParameter, oIndexBufferRootParameter, oAlbedoRootParameter };
 

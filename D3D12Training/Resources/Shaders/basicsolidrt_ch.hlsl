@@ -1,11 +1,10 @@
 #include "shader_common.hlsl"
+#include "shader_common_texture.hlsl"
 
 RaytracingAccelerationStructure scene : register(t0);
 RWTexture2D<float4> uav : register(u0);
 StructuredBuffer<Vertex> VertexBuffer : register(t2);
 StructuredBuffer<uint16_t> IndexBuffer : register(t3);
-
-Texture2D<float4> Albedo : register(t10);
 
 [shader("closesthit")]
 void basicsolidrt_hit(inout RTPayload payload, BuiltInTriangleIntersectionAttributes attribs)
@@ -27,10 +26,15 @@ void basicsolidrt_hit(inout RTPayload payload, BuiltInTriangleIntersectionAttrib
     const float3 NB = VertexBuffer[id1].normal;
     const float3 NC = VertexBuffer[id2].normal;
 
+    const float2 UVA = VertexBuffer[id0].uv;
+    const float2 UVB = VertexBuffer[id1].uv;
+    const float2 UVC = VertexBuffer[id2].uv;
+
     
     float3 AB = normalize(B - A);
     float3 AC = normalize(C - A);
     float3 normal = NA * barycentrics.x + NB * barycentrics.y + NC * barycentrics.z;
+    float2 uv = UVA * barycentrics.x + UVB * barycentrics.y + UVC * barycentrics.z;
 
     float f = GetHardShadowOcclusion(scene, normal);
 
@@ -62,11 +66,12 @@ void basicsolidrt_hit(inout RTPayload payload, BuiltInTriangleIntersectionAttrib
 
             float3 pointLightContribution = float3(1,1,1) * PointLights[i].color * PosToLightAngleAttenuation * PosToLightDistanceAttenuation * pointLightOcclusion;
         
-            //payload.color += float4(pointLightContribution, 0);
-            //payload.color += float4(pointLightContribution, 0) + Albedo.SampleLevel(DefaultSampler, 0, 0);
-            payload.color += float4(pointLightContribution, 0) + Albedo.Load(0);
+            payload.color += float4(pointLightContribution, 0);
+            //payload.color = Albedo.SampleLevel(LinearSampler, uv, 0);
+            //payload.color +=  Albedo.Load(0);
         }
     }
     //payload.color = float4(normal, 0) * (1.0f - f) * diffuseFactor;
     //payload.color = float4(normal, 0);
+    payload.color *= Albedo.SampleLevel(LinearSampler, uv * 10, 0);
 }

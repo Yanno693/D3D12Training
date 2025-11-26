@@ -531,6 +531,9 @@ void RenderLoop()
     g_GameScene.m_pSceneConstantBuffer.WriteData(&g_GameScene.m_oSceneData, sizeof(g_GameScene.m_oSceneData));
     g_GameScene.m_oSceneData.oDirectionalLight.angle.z = (cos(GetElapsedTime() * 0.5f) * 1.5f); // TODO : Normalize the angle
 
+    ID3D12DescriptorHeap* apHeaps[1] = { g_D3DBufferManager.GetHeap()};
+    g_defaultCommandList->SetDescriptorHeaps(1, apHeaps);
+
     if (D3DDevice::isRayTracingEnabled())
     {
         // Submit model to draw, 
@@ -700,7 +703,7 @@ int main()
     g_D3DBufferManager.RequestTexture("test");
     g_D3DBufferManager.RequestTexture("test2");
 
-    float color[4] = {0.5, 0 , 0.5, 1};
+    float color[4] = {1, 1 , 1, 1};
 
     g_D3DBufferManager.RequestTexture("test2");
     g_D3DBufferManager.CreateTextureFromColor("white", color);

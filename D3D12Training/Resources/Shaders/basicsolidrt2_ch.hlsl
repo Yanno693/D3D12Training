@@ -1,11 +1,10 @@
 #include "shader_common.hlsl"
+#include "shader_common_texture.hlsl"
 
 RaytracingAccelerationStructure scene : register(t0);
 RWTexture2D<float4> uav : register(u0);
 StructuredBuffer<Vertex> VertexBuffer : register(t2);
 StructuredBuffer<uint16_t> IndexBuffer : register(t3);
-
-Texture2D<float4> Albedo : register(t10);
 
 [shader("closesthit")]
 void basicsolidrt2_hit(inout RTPayload payload, BuiltInTriangleIntersectionAttributes attribs)
@@ -26,5 +25,7 @@ void basicsolidrt2_hit(inout RTPayload payload, BuiltInTriangleIntersectionAttri
     
     float f = GetHardShadowOcclusion(scene, normal);
 
-    payload.color = float4(0,1,0.5,0) * (1.0f - f);
+    //payload.color = float4(0,1,0.5,0) * (1.0f - f);
+    payload.color = Albedo.SampleLevel(LinearSampler, 0, 0);
+
 }
