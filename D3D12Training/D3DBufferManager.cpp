@@ -478,34 +478,23 @@ void D3DBufferManager::UploadTextures(ID3D12GraphicsCommandList* a_pCommandList)
         }
     }
 
-    UINT uiUploadPointer = 0;
+    UINT64 uiUploadPointer = 0; // This pointer moves texture to texture in he upload buffer
 
     m_pUploadBuffer->TransitionState(a_pCommandList, D3D12_RESOURCE_STATE_COPY_SOURCE);
 
     // 2. Upload the bunch of texture
     while (!oReadyToLoad.empty())
     {
+        UINT64 uiUploadSubPointer = 0; // This pointer moves texture mip to texture mips
+
         auto oTexture = oReadyToLoad.front();
         D3DTexture* pTexture = oTexture.second;
         oReadyToLoad.pop();
 
-        /*
-        void GetCopyableFootprints(
-            [in]            const D3D12_RESOURCE_DESC * pResourceDesc,
-            [in]            UINT                               FirstSubresource,
-            [in]            UINT                               NumSubresources,
-            UINT64                             BaseOffset,
-            [out, optional] D3D12_PLACED_SUBRESOURCE_FOOTPRINT * pLayouts,
-            [out, optional] UINT * pNumRows,
-            [out, optional] UINT64 * pRowSizeInBytes,
-            [out, optional] UINT64 * pTotalBytes
-        );
-        */
-
-        // Get some offset data for each mip to copy
+        // Get some offset datas for each mip to copy, offset data layout for the destination
         D3D12_PLACED_SUBRESOURCE_FOOTPRINT* aoTextureFootprints = new D3D12_PLACED_SUBRESOURCE_FOOTPRINT[pTexture->GetMipCount()];
-        UINT* pRowPitches = nullptr;
-        //UINT64* pRowSizeInBytes = new UINT64[pTexture->GetMipCount()];
+        UINT* pNumRows = new UINT[pTexture->GetMipCount()];
+        UINT64* pRowSize = new UINT64[pTexture->GetMipCount()];
 
         D3D12_RESOURCE_DESC oTextureDesc = pTexture->m_pResource->GetDesc();
 
@@ -515,8 +504,8 @@ void D3DBufferManager::UploadTextures(ID3D12GraphicsCommandList* a_pCommandList)
             pTexture->GetMipCount(),
             0,
             aoTextureFootprints,
-            nullptr,
-            nullptr, // pRowSizeInBytes,
+            pNumRows,
+            pRowSize,
             nullptr
         );
 
@@ -527,21 +516,32 @@ void D3DBufferManager::UploadTextures(ID3D12GraphicsCommandList* a_pCommandList)
             oSrcTex.pResource = m_pUploadBuffer->m_pResource.Get();
             oSrcTex.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
             oSrcTex.PlacedFootprint = aoTextureFootprints[iMipMapIndex];
-            oSrcTex.PlacedFootprint.Offset += uiUploadPointer;
-            //oSrcTex.PlacedFootprint.Footprint.RowPitch = pRowSizeInBytes[iMipMapIndex];
-            // TODO : fix
 
-            D3D12_TEXTURE_COPY_LOCATION oDstTex;
+            // If the source and destination don't have the same size/layout in memory
+            if ((UINT64)aoTextureFootprints[iMipMapIndex].Footprint.RowPitch != pRowSize[iMipMapIndex])
+            {
+                oSrcTex.PlacedFootprint.Offset = uiUploadPointer + uiUploadSubPointer;
+                oSrcTex.PlacedFootprint.Footprint.RowPitch = pRowSize[iMipMapIndex];
+            }
+            else
+            {
+                oSrcTex.PlacedFootprint.Offset += uiUploadPointer;
+            }
+
+            D3D12_TEXTURE_COPY_LOCATION oDstTex = {};
             oDstTex.pResource = pTexture->m_pResource.Get();
             oDstTex.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
             oDstTex.PlacedFootprint = aoTextureFootprints[iMipMapIndex];
             oDstTex.SubresourceIndex = iMipMapIndex;
 
             a_pCommandList->CopyTextureRegion(&oDstTex, 0, 0, 0, &oSrcTex, nullptr);
+
+            uiUploadSubPointer += pRowSize[iMipMapIndex] * pNumRows[iMipMapIndex];
         }
 
         delete[] aoTextureFootprints;
-        //delete[] pRowSizeInBytes; 
+        delete[] pRowSize;
+        delete[] pNumRows;
         
         m_oLoadedTexture[oTexture.first] = pTexture;
         pTexture->TransitionState(a_pCommandList, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
@@ -631,7 +631,7 @@ D3DTexture* D3DBufferManager::LoadTextureFromDDSFile(std::string a_sPath, std::s
     resourceDesc.Height = oDDSTextureHeader.width;
     resourceDesc.Width = oDDSTextureHeader.height;
     resourceDesc.DepthOrArraySize = 1;
-    resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+    resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_64KB_UNDEFINED_SWIZZLE;
     resourceDesc.SampleDesc.Count = 1;
     resourceDesc.SampleDesc.Quality = 0;
     resourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
