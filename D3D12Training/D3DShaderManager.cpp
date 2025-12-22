@@ -163,8 +163,8 @@ void D3DShaderManager::LoadRTShader(std::string const a_sPath)
 	assert(m_oRTShaderSet.find(a_sPath) == m_oRTShaderSet.end());
 
 	std::string sRGSPath = "./Shaders/" + a_sPath + "_rg.cso";
-	std::string sHSPath = "./Shaders/" + a_sPath + "_ch.cso";
-	std::string sMSPath = "./Shaders/" + a_sPath + "_miss.cso";
+	std::string sHSPath  = "./Shaders/" + a_sPath + "_ch.cso";
+	std::string sMSPath  = "./Shaders/" + a_sPath + "_miss.cso";
 
 	// Open shader bytecode
 	HANDLE pRGSFileHandle = CreateFileA(

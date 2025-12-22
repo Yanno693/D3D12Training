@@ -34,9 +34,12 @@ private:
 
 	GameTransform m_oTransform;
 	std::string m_szModelPath; // Path of the model to load without extension
+	std::string m_szShaderName; // Name of the shader to load
+	std::string m_szRTShaderName; // Name of the RT shader to load
 
 	void ParseObject(std::string a_sPath); // Load the object
 	void ParseModelGLTF(std::string a_sPath, std::string const a_sPathBin); // Load the geometry of the object from a GLTF file (ParseObject has to be called first)
+	void LoadShaders();
 
 	void CreateGPUBuffers();
 	void CreateRTGPUBuffers(ID3D12Device5* a_pDevice);
@@ -90,6 +93,9 @@ public:
 
 	void SetScale(const GameScale& a_rScale);
 	GameScale GetScale();
+
+	void SetRotation(const GameRotation& a_rRotation);
+	GameRotation GetRotation();
 
 	bool m_bIsIndexed = false;
 

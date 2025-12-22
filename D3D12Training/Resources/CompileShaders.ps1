@@ -19,9 +19,10 @@ function compileShaderRT($shader)
     $shader_ch_src   = ".\Shaders\" + $shader + "_ch.hlsl"
 
     $shader_ch_cso     = ".\Shaders\" + $shader + "_ch.cso"
-    
+    $shader_ch_16bit_cso = ".\Shaders\" + $shader + "_16bit_ch.cso"
 
     Write-Output "Compiling RT $shader ..."
+    ./dxc.exe -Od -Zi -enable-16bit-types -Qembed_debug -E mainHit -T lib_6_3 -DUSE_16BIT_INDEX_BUFFER -Fo $shader_ch_16bit_cso $shader_ch_src
     ./dxc.exe -Od -Zi -enable-16bit-types -Qembed_debug -E mainHit -T lib_6_3 -Fo $shader_ch_cso $shader_ch_src
 }
 
@@ -42,9 +43,6 @@ function compileShaderMissRT($shader)
     Write-Output "Compiling Miss RT $shader ..."
     ./dxc.exe -Od -Zi -enable-16bit-types -Qembed_debug -E mainMiss -T lib_6_3 -Fo $shader_cso $shader_src
 }
-
-#./dxc.exe -Zi -Qembed_debug -E main -T vs_6_0 -Fo .\Shaders\test_vs.cso -Fre .\Shaders\test_refl.cso -Frs .\Shaders\test_rs.cso .\Shaders\test_vs.hlsl
-#./dxc.exe -Zi -Qembed_debug -E main -T ps_6_0 -Fo .\Shaders\test_ps.cso .\Shaders\test_ps.hlsl
 
 # Meterial Vertex and Pixel shaders
 compileShader("basicsolid")

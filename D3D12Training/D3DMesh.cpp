@@ -33,13 +33,15 @@ void D3DMesh::ParseObject(std::string a_sPath)
 
 	XMLElement* pXMLShader = pXMLRoot->FirstChildElement("shader");
 	assert(pXMLShader != nullptr);
-	m_pShader = g_D3DShaderManager.RequestShader(pXMLShader->GetText());
+	//m_pShader = g_D3DShaderManager.RequestShader(pXMLShader->GetText());
+	m_szShaderName = pXMLShader->GetText();
 
 	if (D3DDevice::isRayTracingEnabled())
 	{
 		XMLElement* pXMLRTShader = pXMLRoot->FirstChildElement("rtshader");
 		assert(pXMLRTShader != nullptr);
-		m_pHitShader = (D3DHitShader*)g_D3DShaderManager.RequestRTShaderV2(pXMLRTShader->GetText(), D3D_RT_SHADER_TYPE::HIT);
+		//m_pHitShader = (D3DHitShader*)g_D3DShaderManager.RequestRTShaderV2(pXMLRTShader->GetText(), D3D_RT_SHADER_TYPE::HIT);
+		m_szRTShaderName = pXMLRTShader->GetText();
 	}
 
 	// Texture Loading
@@ -150,49 +152,59 @@ void D3DMesh::ParseModelGLTF(std::string const a_sPath, std::string const a_sPat
 	UINT oGLTFPositionAccessorIndex = oGLTFFileJson["meshes"][0]["primitives"][0]["attributes"]["POSITION"].get<UINT>();
 	UINT oGLTFPositionBufferViewID = oGLTFFileJson["accessors"][oGLTFPositionAccessorIndex]["bufferView"].get<UINT>();
 	UINT oGLTFPositionCount = oGLTFFileJson["accessors"][oGLTFPositionAccessorIndex]["count"].get<UINT>();
-	UINT oGLTFPositionDataInBuffer = oGLTFFileJson["bufferViews"][oGLTFPositionBufferViewID]["byteOffset"].get<UINT>();
+	UINT oGLTFPositionDataStride = oGLTFFileJson["bufferViews"][oGLTFPositionBufferViewID].contains("byteStride") ? oGLTFFileJson["bufferViews"][oGLTFPositionBufferViewID]["byteStride"].get<UINT>() : 12; // VEC3
+	UINT oGLTFPositionDataInBuffer = 
+		(oGLTFFileJson["bufferViews"][oGLTFPositionBufferViewID].contains("byteOffset") ? oGLTFFileJson["bufferViews"][oGLTFPositionBufferViewID]["byteOffset"].get<UINT>() : 0) +
+		(oGLTFFileJson["accessors"][oGLTFPositionAccessorIndex].contains("byteOffset") ? oGLTFFileJson["accessors"][oGLTFPositionAccessorIndex]["byteOffset"].get<UINT>() : 0)
+		;
 	UINT oGLTFPositionLengthInBuffer = oGLTFFileJson["bufferViews"][oGLTFPositionBufferViewID]["byteLength"].get<UINT>();
 
 	UINT oGLTFUVAccessorIndex = oGLTFFileJson["meshes"][0]["primitives"][0]["attributes"]["TEXCOORD_0"].get<UINT>();
 	UINT oGLTFUVBufferViewID = oGLTFFileJson["accessors"][oGLTFUVAccessorIndex]["bufferView"].get<UINT>();
 	UINT oGLTFUVCount = oGLTFFileJson["accessors"][oGLTFUVAccessorIndex]["count"].get<UINT>();
-	UINT oGLTFUVDataInBuffer = oGLTFFileJson["bufferViews"][oGLTFUVBufferViewID]["byteOffset"].get<UINT>();
+	UINT oGLTFUVDataStride = oGLTFFileJson["bufferViews"][oGLTFUVBufferViewID].contains("byteStride") ? oGLTFFileJson["bufferViews"][oGLTFUVBufferViewID]["byteStride"].get<UINT>() : 8; // VEC2
+	UINT oGLTFUVDataInBuffer =
+		(oGLTFFileJson["bufferViews"][oGLTFUVBufferViewID].contains("byteOffset") ? oGLTFFileJson["bufferViews"][oGLTFUVBufferViewID]["byteOffset"].get<UINT>() : 0) +
+		(oGLTFFileJson["accessors"][oGLTFUVAccessorIndex].contains("byteOffset") ? oGLTFFileJson["accessors"][oGLTFUVAccessorIndex]["byteOffset"].get<UINT>() : 0);
 	UINT oGLTFUVLengthInBuffer = oGLTFFileJson["bufferViews"][oGLTFUVBufferViewID]["byteLength"].get<UINT>();
 
 	UINT oGLTFNormalAccessorIndex = oGLTFFileJson["meshes"][0]["primitives"][0]["attributes"]["NORMAL"].get<UINT>();
 	UINT oGLTFNormalBufferViewID = oGLTFFileJson["accessors"][oGLTFNormalAccessorIndex]["bufferView"].get<UINT>();
 	UINT oGLTFNormalCount = oGLTFFileJson["accessors"][oGLTFNormalAccessorIndex]["count"].get<UINT>();
-	UINT oGLTFNormalDataInBuffer = oGLTFFileJson["bufferViews"][oGLTFNormalBufferViewID]["byteOffset"].get<UINT>();
+	UINT oGLTFNormalStride = oGLTFFileJson["bufferViews"][oGLTFNormalBufferViewID].contains("byteStride") ? oGLTFFileJson["bufferViews"][oGLTFNormalBufferViewID]["byteStride"].get<UINT>() : 12; // VEC3
+	UINT oGLTFNormalDataInBuffer = 
+		(oGLTFFileJson["bufferViews"][oGLTFNormalBufferViewID].contains("byteOffset") ? oGLTFFileJson["bufferViews"][oGLTFNormalBufferViewID]["byteOffset"].get<UINT>() : 0) +
+		(oGLTFFileJson["accessors"][oGLTFNormalAccessorIndex].contains("byteOffset") ? oGLTFFileJson["accessors"][oGLTFNormalAccessorIndex]["byteOffset"].get<UINT>() : 0);
 	UINT oGLTFNormalLengthInBuffer = oGLTFFileJson["bufferViews"][oGLTFNormalBufferViewID]["byteLength"].get<UINT>();
-
-	assert(oGLTFPositionCount == oGLTFUVCount && oGLTFPositionCount == oGLTFNormalCount);
 
 	UINT oGLTFIndicesAccessorIndex = oGLTFFileJson["meshes"][0]["primitives"][0]["indices"].get<UINT>();
 	UINT oGLTFIndicesBufferViewID = oGLTFFileJson["accessors"][oGLTFIndicesAccessorIndex]["bufferView"].get<UINT>();
 	UINT oGLTFIndicesCount = oGLTFFileJson["accessors"][oGLTFIndicesAccessorIndex]["count"].get<UINT>();
 	UINT oGLTFIndicesType = oGLTFFileJson["accessors"][oGLTFIndicesAccessorIndex]["componentType"].get<UINT>();
-	UINT oGLTFIndicesDataInBuffer = oGLTFFileJson["bufferViews"][oGLTFIndicesBufferViewID]["byteOffset"].get<UINT>();
+	UINT oGLTFIndicesDataInBuffer = 
+		(oGLTFFileJson["bufferViews"][oGLTFIndicesBufferViewID].contains("byteOffset") ? oGLTFFileJson["bufferViews"][oGLTFIndicesBufferViewID]["byteOffset"].get<UINT>() : 0) +
+		(oGLTFFileJson["accessors"][oGLTFIndicesAccessorIndex].contains("byteOffset") ? oGLTFFileJson["accessors"][oGLTFIndicesAccessorIndex]["byteOffset"].get<UINT>() : 0);
 	UINT oGLTFIndicesLengthInBuffer = oGLTFFileJson["bufferViews"][oGLTFIndicesBufferViewID]["byteLength"].get<UINT>();
 
 	m_oMeshPositionData.ptr = (char*)malloc(oGLTFPositionLengthInBuffer);
 	assert(m_oMeshPositionData.ptr != nullptr);
 	memcpy(m_oMeshPositionData.ptr, oGLTFBinData + oGLTFPositionDataInBuffer, oGLTFPositionLengthInBuffer);
 	m_oMeshPositionData.size = oGLTFPositionLengthInBuffer;
-	m_oMeshPositionData.stride = oGLTFPositionLengthInBuffer / oGLTFPositionCount;
+	m_oMeshPositionData.stride = oGLTFPositionDataStride;
 	m_oMeshPositionData.count = oGLTFPositionCount;
 
 	m_oMeshUVData.ptr = (char*)malloc(oGLTFUVLengthInBuffer);
 	assert(m_oMeshUVData.ptr != nullptr);
 	memcpy(m_oMeshUVData.ptr, oGLTFBinData + oGLTFUVDataInBuffer, oGLTFUVLengthInBuffer);
 	m_oMeshUVData.size = oGLTFUVLengthInBuffer;
-	m_oMeshUVData.stride = oGLTFUVLengthInBuffer / oGLTFUVCount;
+	m_oMeshUVData.stride = oGLTFUVDataStride;
 	m_oMeshUVData.count = oGLTFUVCount;
 
 	m_oMeshNormalData.ptr = (char*)malloc(oGLTFNormalLengthInBuffer);
 	assert(m_oMeshNormalData.ptr != nullptr);
 	memcpy(m_oMeshNormalData.ptr, oGLTFBinData + oGLTFNormalDataInBuffer, oGLTFNormalLengthInBuffer);
 	m_oMeshNormalData.size = oGLTFNormalLengthInBuffer;
-	m_oMeshNormalData.stride = oGLTFNormalLengthInBuffer / oGLTFNormalCount;
+	m_oMeshNormalData.stride = oGLTFNormalStride;
 	m_oMeshNormalData.count = oGLTFNormalCount;
 
 	m_oMeshIndicesData.ptr = (char*)malloc(oGLTFIndicesLengthInBuffer);
@@ -203,20 +215,24 @@ void D3DMesh::ParseModelGLTF(std::string const a_sPath, std::string const a_sPat
 	m_oMeshIndicesData.count = oGLTFIndicesCount;
 
 	m_uiIndicesCount = oGLTFIndicesCount;
-	m_uiTriangleCount = oGLTFPositionCount / 3;
+	m_uiTriangleCount = oGLTFIndicesCount / 3;
 
 	free(oGLTFBinData);
 	oGLTFStream.close();
 }
 
+void D3DMesh::LoadShaders()
+{
+	if (m_oMeshIndicesData.stride == sizeof(USHORT)) // Do we use 16 bit uint as indexes ?
+		m_szRTShaderName += "_16bit";
+	
+	m_pShader = g_D3DShaderManager.RequestShader(m_szShaderName);
+	if (D3DDevice::isRayTracingEnabled())
+		m_pHitShader = (D3DHitShader*)g_D3DShaderManager.RequestRTShaderV2(m_szRTShaderName, D3D_RT_SHADER_TYPE::HIT);
+}
+
 void D3DMesh::CreateGPUBuffers()
 {
-
-	/*
-	UINT uiVertexBufferSize = m_oMeshPositionData.size + m_oMeshNormalData.size;
-	UINT uiVertexStride = m_oMeshPositionData.stride + m_oMeshNormalData.stride;
-
-	*/
 	UINT uiVertexBufferSize = m_oMeshPositionData.size + m_oMeshNormalData.size + m_oMeshUVData.size;
 	UINT uiVertexStride = m_oMeshPositionData.stride + m_oMeshNormalData.stride + m_oMeshUVData.stride;
 
@@ -493,6 +509,7 @@ void D3DMesh::Initialize(std::string a_sPath, ID3D12Device5* a_pDevice, bool a_b
 	
 	ParseObject(sObjectPath.str());
 	ParseModelGLTF(m_szModelPath + ".gltf", m_szModelPath + ".bin");
+	LoadShaders();
 
 	CreateGPUBuffers();
 
@@ -519,6 +536,8 @@ void D3DMesh::Initialize(std::string a_sPath, ID3D12Device5* a_pDevice, bool a_b
 	}
 
 	CreatePSO(a_pDevice);
+
+	D3DMesh::s_MeshList.push_back(*this);
 }
 
 void D3DMesh::Draw(ID3D12GraphicsCommandList* a_pCommandList)
@@ -526,6 +545,7 @@ void D3DMesh::Draw(ID3D12GraphicsCommandList* a_pCommandList)
 	// TODO : To move in a sort of Update() fuction
 	DirectX::XMMATRIX oTranslationMatrix = DirectX::XMMatrixTranslation(m_oTransform.position.x, m_oTransform.position.y, m_oTransform.position.z);
 	DirectX::XMMATRIX oScaleMatrix = DirectX::XMMatrixScaling(m_oTransform.scale.x, m_oTransform.scale.y, m_oTransform.scale.z);
+	DirectX::XMMATRIX oRotationMatrix = DirectX::XMMatrixRotationRollPitchYaw(m_oTransform.rotation.x, m_oTransform.rotation.y, m_oTransform.rotation.z);
 	DirectX::XMMATRIX oTransform = oScaleMatrix * oTranslationMatrix;
 
 	MeshConstant oConstant = {};
@@ -590,4 +610,14 @@ void D3DMesh::SetScale(const GameScale& a_rScale)
 GameScale D3DMesh::GetScale()
 {
 	return m_oTransform.scale;
+}
+
+void D3DMesh::SetRotation(const GameRotation& a_rRotation)
+{
+	m_oTransform.rotation = a_rRotation;
+}
+
+GameRotation D3DMesh::GetRotation()
+{
+	return m_oTransform.rotation;
 }

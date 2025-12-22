@@ -1,0 +1,22 @@
+<object>
+    <model>mug</model>
+    <shader>basicsolid</shader>
+    <rtshader>basicsolidrt</rtshader>
+    <transform>
+        <position>
+            <x>5</x>
+            <y>1</y>
+            <z>0</z>
+        </position>
+        <rotation>
+            <x>-1.57</x>
+            <y>0</y>
+            <z>0</z>
+        </rotation>
+        <scale>
+            <x>10</x>
+            <y>10</y>
+            <z>10</z>
+        </scale>
+    </transform>
+</object>

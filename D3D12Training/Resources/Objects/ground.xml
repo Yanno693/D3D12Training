@@ -17,9 +17,9 @@
             <z>0</z>
         </rotation>
         <scale>
-            <x>20</x>
+            <x>40</x>
             <y>1</y>
-            <z>20</z>
+            <z>40</z>
         </scale>
     </transform>
 </object>

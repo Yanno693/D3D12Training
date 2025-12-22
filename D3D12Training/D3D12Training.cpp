@@ -675,22 +675,19 @@ int main()
     g_GameScene.UploadPointLightsToGPU();
 
     D3DMesh oGroundMesh;
-    D3DMesh oMesh;
-    D3DMesh oMesh2;
-    D3DMesh oMesh3;
-    D3DMesh oMesh4;
+    D3DMesh oTableMesh;
+    D3DMesh oMugMesh;
 
     oGroundMesh.Initialize("ground", D3DDevice::s_device.Get(), true);
-    oMesh.Initialize("monkey", D3DDevice::s_device.Get(), true);
+    oTableMesh.Initialize("table", D3DDevice::s_device.Get(), true);
+    oMugMesh.Initialize("mug", D3DDevice::s_device.Get(), true);
+    /*
     oMesh2.Initialize("monkey2", D3DDevice::s_device.Get(), true);
+    oMesh5.Initialize("chair", D3DDevice::s_device.Get(), true);
+    oMesh.Initialize("monkey", D3DDevice::s_device.Get(), true);
     oMesh3.Initialize("monkeysmooth", D3DDevice::s_device.Get(), true);
     oMesh4.Initialize("spheresmooth", D3DDevice::s_device.Get(), true);
-
-    D3DMesh::s_MeshList.push_back(oGroundMesh);
-    D3DMesh::s_MeshList.push_back(oMesh);
-    D3DMesh::s_MeshList.push_back(oMesh2);
-    D3DMesh::s_MeshList.push_back(oMesh3);
-    D3DMesh::s_MeshList.push_back(oMesh4);
+    */
 
     test_texture = new D3DTexture;
     test_depth = new D3DTexture;
@@ -700,12 +697,8 @@ int main()
     g_D3DBufferManager.InitializeTexture(test_texture, g_ScreenResolution.width, g_ScreenResolution.height, BACK_BUFFER_FORMAT);
     g_D3DBufferManager.InitializeTexture(test_depth, g_ScreenResolution.width, g_ScreenResolution.height, DEPTH_BUFFER_FORMAT, true);
 
-    g_D3DBufferManager.RequestTexture("test");
-    g_D3DBufferManager.RequestTexture("test2");
-
     float color[4] = {1, 1 , 1, 1};
 
-    g_D3DBufferManager.RequestTexture("test2");
     g_D3DBufferManager.CreateTextureFromColor("white", color);
 
     g_D3DRenderTargetManager.InitializeRenderTargetFromTexture(mainRT, test_texture);

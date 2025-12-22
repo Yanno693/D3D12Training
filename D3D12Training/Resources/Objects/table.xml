@@ -1,0 +1,25 @@
+<object>
+    <model>table</model>
+    <shader>basicsolid</shader>
+    <rtshader>basicsolidrt</rtshader>
+    <material>
+        <albedo>table_albedo</albedo>
+    </material>
+    <transform>
+        <position>
+            <x>5</x>
+            <y>-4</y>
+            <z>0</z>
+        </position>
+        <rotation>
+            <x>0</x>
+            <y>0</y>
+            <z>0</z>
+        </rotation>
+        <scale>
+            <x>10</x>
+            <y>10</y>
+            <z>10</z>
+        </scale>
+    </transform>
+</object>

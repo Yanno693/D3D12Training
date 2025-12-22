@@ -124,10 +124,12 @@ void D3DRayTracingScene::CreateBVH(ID3D12GraphicsCommandList4* a_pCommandList)
 
 		GamePosition oMeshPosition = m_apCurrentSceneMesh[i]->GetPosition();
 		GameScale oMeshScale = m_apCurrentSceneMesh[i]->GetScale();
+		GameRotation oMeshRotation = m_apCurrentSceneMesh[i]->GetRotation();
 
 		DirectX::XMMATRIX oTranslationMatrix = DirectX::XMMatrixTranslation(oMeshPosition.x, oMeshPosition.y, oMeshPosition.z);
 		DirectX::XMMATRIX oScaleMatrix = DirectX::XMMatrixScaling(oMeshScale.x, oMeshScale.y, oMeshScale.z);
-		DirectX::XMMATRIX oTransform = oScaleMatrix * oTranslationMatrix;
+		DirectX::XMMATRIX oRotationMatrix = DirectX::XMMatrixRotationRollPitchYaw(oMeshRotation.x, oMeshRotation.y, oMeshRotation.z);
+		DirectX::XMMATRIX oTransform = oScaleMatrix * oRotationMatrix * oTranslationMatrix;
 
 		m_apCurrentSceneMesh[i]->GetPosition();
 

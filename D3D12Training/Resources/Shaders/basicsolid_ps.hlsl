@@ -17,7 +17,7 @@ PixelOutput main(VertexOutput v)
 {
    PixelOutput p;
 
-   //p.color = float4(v.normal, 0);
-   p.color = Albedo.Sample(LinearSampler, v.uv);
+   p.color = float4(v.normal, 0);
+   //p.color = Albedo.Sample(LinearSampler, v.uv);
    return p;
 }

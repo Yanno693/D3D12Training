@@ -1,21 +1,21 @@
 #include "shader_common.hlsl"
+#include "shader_common_ch.hlsl"
 #include "shader_common_texture.hlsl"
 
 RaytracingAccelerationStructure scene : register(t0);
 RWTexture2D<float4> uav : register(u0);
 StructuredBuffer<Vertex> VertexBuffer : register(t2);
-StructuredBuffer<uint16_t> IndexBuffer : register(t3);
+StructuredBuffer<Index> IndexBuffer : register(t3);
 
 [shader("closesthit")]
-void basicsolidrt_hit(inout RTPayload payload, BuiltInTriangleIntersectionAttributes attribs)
+RT_SHADER_SIGNATURE(basicsolidrt)
 {
-    
     float3 barycentrics = float3(1.f - attribs.barycentrics.x - attribs.barycentrics.y, attribs.barycentrics.x, attribs.barycentrics.y);
 
     // Get Indexes from primitive ID
-    const uint16_t id0 = IndexBuffer[PrimitiveIndex() * 3 + 0];
-    const uint16_t id1 = IndexBuffer[PrimitiveIndex() * 3 + 1];
-    const uint16_t id2 = IndexBuffer[PrimitiveIndex() * 3 + 2];
+    const Index id0 = IndexBuffer[PrimitiveIndex() * 3 + 0];
+    const Index id1 = IndexBuffer[PrimitiveIndex() * 3 + 1];
+    const Index id2 = IndexBuffer[PrimitiveIndex() * 3 + 2];
 
     // Get Vertices
     const float3 A = VertexBuffer[id0].position;
@@ -73,5 +73,6 @@ void basicsolidrt_hit(inout RTPayload payload, BuiltInTriangleIntersectionAttrib
     }
     //payload.color = float4(normal, 0) * (1.0f - f) * diffuseFactor;
     //payload.color = float4(normal, 0);
-    payload.color *= Albedo.SampleLevel(LinearSampler, uv * 10, 0);
+    payload.color *= Albedo.SampleLevel(LinearSampler, uv, 0);
+    //payload.color = Albedo.SampleLevel(LinearSampler, uv * 10, 0);
 }
