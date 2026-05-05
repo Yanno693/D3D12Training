@@ -7,14 +7,6 @@ RWTexture2D<float4> uav : register(u0);
 StructuredBuffer<Vertex> VertexBuffer : register(t2);
 StructuredBuffer<Index> IndexBuffer : register(t3);
 
-/*
-#ifdef USE_16BIT_INDEX_BUFFER
-void basicsolidrt2_16bit_hit(inout RTPayload payload, BuiltInTriangleIntersectionAttributes attribs)
-#else
-void basicsolidrt2_hit(inout RTPayload payload, BuiltInTriangleIntersectionAttributes attribs)
-#endif // 16_BIT_INDEX
-*/
-
 [shader("closesthit")]
 RT_SHADER_SIGNATURE(basicsolidrt2)
 {

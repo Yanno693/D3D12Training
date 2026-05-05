@@ -33,18 +33,19 @@ RT_SHADER_SIGNATURE(basicsolidrt)
     
     float3 AB = normalize(B - A);
     float3 AC = normalize(C - A);
-    float3 normal = NA * barycentrics.x + NB * barycentrics.y + NC * barycentrics.z;
+    float3 normal = NA * barycentrics.x + NB * barycentrics.y + NC * barycentrics.z; // Todo : Transform normal from object space to world space
+    float3 worldNormal = mul(normal, (float3x3)ObjectToWorld4x3());
+
     float2 uv = UVA * barycentrics.x + UVB * barycentrics.y + UVC * barycentrics.z;
 
-    float f = GetHardShadowOcclusion(scene, normal);
+    float f = GetHardShadowOcclusion(scene, worldNormal);
 
     //float3 lightDirection = normalize(float3(1, 1, 1)) * - 1.0f; // TODO : Get light direction and color from constant buffer
-    float3 lightDirection = normalize(oDirectionalLight.angle); // TODO : Get light direction and color from constant buffer
+    float3 lightDirection = normalize(oDirectionalLight.angle);
 
-    float diffuseFactor = max(0.0f, dot(-lightDirection, normal));
+    float diffuseFactor = max(0.0f, dot(-lightDirection, worldNormal));
 
     //float3 hitColor = A * barycentrics.x + B * barycentrics.y + C * barycentrics.z;
-    //float3 hitColor = normal;
 
     float3 DirectionnalContribution = float3(1,1,1) * float3(oDirectionalLight.color) * (1.0f - f) * diffuseFactor;
 
@@ -58,10 +59,10 @@ RT_SHADER_SIGNATURE(basicsolidrt)
 
         if(distanceToLight <= PointLights[i].radius)
         {
-            float pointLightOcclusion = 1.0f - GetPointLightOcclusion(scene, i, distanceToLight, normal);
+            float pointLightOcclusion = 1.0f - GetPointLightOcclusion(scene, i, distanceToLight, worldNormal);
 
             float3 PosToLight = normalize(PointLights[i].position - worldPos);
-            float PosToLightAngleAttenuation = max(0.0f, dot(normal, PosToLight));
+            float PosToLightAngleAttenuation = max(0.0f, dot(worldNormal, PosToLight));
             float PosToLightDistanceAttenuation = max(0.0f, 1.0f - (distanceToLight / PointLights[i].radius));
 
             float3 pointLightContribution = float3(1,1,1) * PointLights[i].color * PosToLightAngleAttenuation * PosToLightDistanceAttenuation * pointLightOcclusion;
@@ -72,7 +73,8 @@ RT_SHADER_SIGNATURE(basicsolidrt)
         }
     }
     //payload.color = float4(normal, 0) * (1.0f - f) * diffuseFactor;
-    //payload.color = float4(normal, 0);
-    payload.color *= Albedo.SampleLevel(LinearSampler, uv, 0);
+    //payload.color = float4(normal, 0); // These are object-space normals
+    //payload.color = float4(worldNormal, 0); // These are world-space normals
     //payload.color = Albedo.SampleLevel(LinearSampler, uv * 10, 0);
+    payload.color *= Albedo.SampleLevel(LinearSampler, uv, 0);
 }

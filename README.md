@@ -17,6 +17,7 @@ This renderer uses DXR.
 ![capture1](./Screenshots/capture1.png)
 ![capture2](./Screenshots/capture2.png)
 ![capture3](./Screenshots/capture3.png)
+![capture4](./Screenshots/capture4.png)
 # Useful Links
 - [DirectX Raytracing Spec](https://microsoft.github.io/DirectX-Specs/d3d/Raytracing.html)
 - [DirectX Raytracing Documentation](https://learn.microsoft.com/en-us/windows/win32/direct3d12/direct3d-12-raytracing)
