@@ -14,7 +14,8 @@ VertexOutput main(Vertex input)
     float4 ViewSpacePos = mul(ModelMatrix, float4(input.position, 1));
 
     v.position = mul(oViewProjMatrix, ViewSpacePos);
-    v.normal = input.normal;
+    //v.normal = input.normal;
+    v.normal = mul(ModelMatrix, float4(input.normal, 0)).xyz;
     v.uv = input.uv;
     //v.position /= v.position.w; // Semms like i don't need this line ?
     

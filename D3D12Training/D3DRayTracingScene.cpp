@@ -131,8 +131,6 @@ void D3DRayTracingScene::CreateBVH(ID3D12GraphicsCommandList4* a_pCommandList)
 		DirectX::XMMATRIX oRotationMatrix = DirectX::XMMatrixRotationRollPitchYaw(oMeshRotation.x, oMeshRotation.y, oMeshRotation.z);
 		DirectX::XMMATRIX oTransform = oScaleMatrix * oRotationMatrix * oTranslationMatrix;
 
-		m_apCurrentSceneMesh[i]->GetPosition();
-
 		DirectX::XMStoreFloat3x4((DirectX::XMFLOAT3X4*)&pInstancesData[i].Transform, oTransform);
 	}
 	m_oInstanceUpdateBuffer.WriteData(pInstancesData, (UINT)(sizeof(D3D12_RAYTRACING_INSTANCE_DESC) * m_apCurrentSceneMesh.size()));

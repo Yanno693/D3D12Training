@@ -546,7 +546,7 @@ void D3DMesh::Draw(ID3D12GraphicsCommandList* a_pCommandList)
 	DirectX::XMMATRIX oTranslationMatrix = DirectX::XMMatrixTranslation(m_oTransform.position.x, m_oTransform.position.y, m_oTransform.position.z);
 	DirectX::XMMATRIX oScaleMatrix = DirectX::XMMatrixScaling(m_oTransform.scale.x, m_oTransform.scale.y, m_oTransform.scale.z);
 	DirectX::XMMATRIX oRotationMatrix = DirectX::XMMatrixRotationRollPitchYaw(m_oTransform.rotation.x, m_oTransform.rotation.y, m_oTransform.rotation.z);
-	DirectX::XMMATRIX oTransform = oScaleMatrix * oTranslationMatrix;
+	DirectX::XMMATRIX oTransform = oScaleMatrix * oRotationMatrix * oTranslationMatrix;
 
 	MeshConstant oConstant = {};
 	oConstant.mModelMatrix = oTransform;

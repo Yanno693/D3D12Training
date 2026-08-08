@@ -41,7 +41,7 @@ DirectX::XMVECTOR up{ 0.0f, 1, 0, 0 };
 
 bool g_bIsRunning = true;
 
-void InputUpdate(float a_fDeltaTime)
+void InputScene(float a_fDeltaTime)
 {
     using namespace DirectX;
 
@@ -455,24 +455,25 @@ void DrawImGUI()
 // Draw to back buffer
 void RenderImGUI()
 {
-    PIXBeginEvent(g_defaultCommandList.Get(), PIX_COLOR_ORANGE, "ImGUI");
+    PIXBeginEvent(g_commandQueue.Get(), PIX_COLOR_ORANGE, "ImGUI");
     ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), g_defaultCommandList.Get());
-    PIXEndEvent(g_defaultCommandList.Get());
+    PIXEndEvent(g_commandQueue.Get());
 }
 
 void UploadTextures()
 { 
     if (!g_D3DBufferManager.isUploadTextureQueueEmpty())
     {
+        PIXScopedEvent(PIX_COLOR_LIGHTBLUE, "Upload Texture");
         if (!SUCCEEDED(g_defaultCommandList->Reset(g_commandAllocator.Get(), NULL)))
         {
             OutputDebugStringA("Error : Command List Reset \n");
             assert(0);
         }
 
-        PIXBeginEvent(g_defaultCommandList.Get(), PIX_COLOR_LIGHTBLUE, "Texture Upload");
+        PIXBeginEvent(g_commandQueue.Get(), PIX_COLOR_LIGHTBLUE, "Texture Upload");
         g_D3DBufferManager.UploadTextures(g_defaultCommandList.Get());
-        PIXEndEvent(g_defaultCommandList.Get());
+        PIXEndEvent(g_commandQueue.Get());
 
         if (!SUCCEEDED(g_defaultCommandList->Close()))
         {
@@ -511,6 +512,7 @@ void RenderBegin()
 
 void RenderLoop()
 {
+    PIXScopedEvent(PIX_COLOR_WHITE, "Scene Render");
     PIXBeginEvent(g_defaultCommandList.Get(), PIX_COLOR_WHITE, "Scene Render");
     FLOAT color[4] = {
         0.0f,
@@ -593,16 +595,23 @@ void RenderEnd()
     }
 
     ID3D12CommandList* ppCommandLists[] = { g_defaultCommandList.Get() };
+    PIXBeginEvent(PIX_COLOR_PINK, "Command List Submit");
     g_commandQueue->ExecuteCommandLists(1, ppCommandLists);
+    PIXEndEvent();
+    
+    PIXBeginEvent(PIX_COLOR_RED, "Wait for command list");
     WaitEndOfCommandList();
+    PIXEndEvent();
 
     g_D3DRayTracingScene.FlushRTScene();
 
+    PIXBeginEvent(PIX_COLOR_DARKRED, "Swapchain Present");
     if (!SUCCEEDED(D3DDevice::s_swapchain->Present(1, 0)))
     {
         OutputDebugStringA("Error : Swapchain Present \n");
         assert(0);
     }
+    PIXEndEvent();
 
     BackBufferIndex = (BackBufferIndex + 1) % 2;
 }
@@ -611,6 +620,8 @@ Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> g_SRVDescriptorHeap;
 
 int main()
 {
+    SetThreadDescription(GetCurrentThread(), L"D3D12Training Main Thread");
+    
     g_Camera.transform.position.x = 0;
     g_Camera.transform.position.y = 0;
     g_Camera.transform.position.z = -10;
@@ -711,32 +722,42 @@ int main()
 
     while (g_bIsRunning)
     {
-        // Window Events
-        while (PeekMessage(&message, NULL, NULL, NULL, PM_REMOVE))
-        {
-            if (message.message == WM_QUIT)
+        { // Game Loop
+            PIXScopedEvent(PIX_COLOR_ORANGE, "Gameloop");
+        
+            // Window Events
             {
-                g_bIsRunning = false;
+                PIXScopedEvent(PIX_COLOR_LIGHTBLUE, "Windows Massages");
+                while (PeekMessage(&message, NULL, NULL, NULL, PM_REMOVE))
+                {
+                    if (message.message == WM_QUIT)
+                    {
+                        g_bIsRunning = false;
+                    }
+
+                    TranslateMessage(&message);
+                    DispatchMessage(&message);
+                }
+            }
+        
+            { // Inputs update
+                PIXScopedEvent(PIX_COLOR_LIGHTGREEN, "Input State Update");
+                GameInputs::UpdateState();
             }
 
-            TranslateMessage(&message);
-            DispatchMessage(&message);
+            DrawImGUI();
+        
+            g_clockCurrent = std::chrono::steady_clock::now();
+            float elapsedTime = std::chrono::duration_cast<std::chrono::duration<float>>(g_clockCurrent - g_clockBegin).count();
+            float deltaTime = std::chrono::duration_cast<std::chrono::duration<float>>(g_clockCurrent - g_clockLast).count();
+            g_clockLast = g_clockCurrent;
+
+            std::stringstream ss;
+            ss << "Elapsed Time : " << elapsedTime << std::endl;
+            OutputDebugStringA(ss.str().c_str());
+
+            InputScene(deltaTime);
         }
-        
-        GameInputs::UpdateState();
-        DrawImGUI();
-        
-        // Game Loop
-        g_clockCurrent = std::chrono::steady_clock::now();
-        float elapsedTime = std::chrono::duration_cast<std::chrono::duration<float>>(g_clockCurrent - g_clockBegin).count();
-        float deltaTime = std::chrono::duration_cast<std::chrono::duration<float>>(g_clockCurrent - g_clockLast).count();
-        g_clockLast = g_clockCurrent;
-
-        std::stringstream ss;
-        ss << "Elapsed Time : " << elapsedTime << std::endl;
-        OutputDebugStringA(ss.str().c_str());
-
-        InputUpdate(deltaTime);
 
         // Render Loop
         RenderBegin();
