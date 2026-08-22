@@ -15,3 +15,8 @@ D3DTexture* GameMaterial::GetTexture(UINT a_uiIndex)
 	else
 		return nullptr;
 }
+
+std::map<UINT, D3DTexture*>& GameMaterial::GetTextures()
+{
+	return m_oTextures;
+}

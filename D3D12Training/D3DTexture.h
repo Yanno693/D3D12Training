@@ -1,6 +1,14 @@
 #pragma once
-
 #include "D3DIncludes.h"
+
+class D3DTextureAddress
+{
+	friend class D3DBufferManager;
+
+public:
+	D3D12_GPU_DESCRIPTOR_HANDLE m_eSRVGPUHandle;
+	D3D12_CPU_DESCRIPTOR_HANDLE m_eSRVCPUHandle;
+};
 
 class D3DTexture
 {
@@ -15,15 +23,18 @@ private:
 	UINT m_uiMipCount = 0;
 	UINT m_uiRowPitch = 0;
 	DXGI_FORMAT m_eFormat = DXGI_FORMAT_UNKNOWN;
+	std::wstring m_szDebugName;
 
-	char* m_pUploadData = nullptr; // Texture data to upload before the texture is raedy to use
+	char* m_pUploadData = nullptr; // Texture data to upload before the texture is ready to use
 
 public:
 	D3D12_UNORDERED_ACCESS_VIEW_DESC m_oUAVView;
 	D3D12_SHADER_RESOURCE_VIEW_DESC m_oSRVView;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_pResource;
-	D3D12_GPU_DESCRIPTOR_HANDLE m_eUAVGPUHandle; // UAV GPU Handle, sort of "address" in the descriptor heap
 	D3D12_GPU_DESCRIPTOR_HANDLE m_eSRVGPUHandle; // SRV GPU Handle, sort of "address" in the descriptor heap
+	D3D12_CPU_DESCRIPTOR_HANDLE m_eSRVCPUHandle; // SRV CPU Handle, same, but can be handled CPU side (for copy) 
+	D3D12_GPU_DESCRIPTOR_HANDLE m_eUAVGPUHandle; // UAV GPU Handle, sort of "address" in the descriptor heap
+	D3D12_CPU_DESCRIPTOR_HANDLE m_eUAVCPUHandle; // UAV GPU Handle, same, but can be handled CPU side (for copy)
 
 	//void Initialize(ID3D12Device* a_pDevice, UINT a_uiSizeInBytes);
 	void TransitionState(ID3D12GraphicsCommandList* a_commandList, D3D12_RESOURCE_STATES a_targetResourceState);

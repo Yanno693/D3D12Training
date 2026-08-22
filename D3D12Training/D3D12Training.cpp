@@ -462,7 +462,7 @@ void RenderImGUI()
 
 void UploadTextures()
 { 
-    if (!g_D3DBufferManager.isUploadTextureQueueEmpty())
+    if (!g_D3DBufferManager.IsUploadTextureQueueEmpty())
     {
         PIXScopedEvent(PIX_COLOR_LIGHTBLUE, "Upload Texture");
         if (!SUCCEEDED(g_defaultCommandList->Reset(g_commandAllocator.Get(), NULL)))
@@ -502,6 +502,14 @@ void RenderBegin()
     }
 
     UploadTextures();
+    if (g_D3DBufferManager.IsTextureForRenderingDirty())
+    {
+        for (UINT i = 0; i < D3DMesh::s_MeshList.size(); i++)
+        {
+            g_D3DBufferManager.RegisterTexturesForRendering(D3DMesh::s_MeshList[i].m_pMaterial->GetTextures(), D3DMesh::s_MeshList[i].m_pMaterial->m_oTexturesAddress);
+        }
+        g_D3DBufferManager.SetTextureForRenderingDirty(false);
+    }
 
     if (!SUCCEEDED(g_defaultCommandList->Reset(g_commandAllocator.Get(), NULL)))
     {
@@ -685,13 +693,6 @@ int main()
     g_GameScene.AddPointLight(pl1);
     g_GameScene.UploadPointLightsToGPU();
 
-    D3DMesh oGroundMesh;
-    D3DMesh oTableMesh;
-    D3DMesh oMugMesh;
-
-    oGroundMesh.Initialize("ground", D3DDevice::s_device.Get(), true);
-    oTableMesh.Initialize("table", D3DDevice::s_device.Get(), true);
-    oMugMesh.Initialize("mug", D3DDevice::s_device.Get(), true);
     /*
     oMesh2.Initialize("monkey2", D3DDevice::s_device.Get(), true);
     oMesh5.Initialize("chair", D3DDevice::s_device.Get(), true);
@@ -707,10 +708,9 @@ int main()
 
     g_D3DBufferManager.InitializeTexture(test_texture, g_ScreenResolution.width, g_ScreenResolution.height, BACK_BUFFER_FORMAT);
     g_D3DBufferManager.InitializeTexture(test_depth, g_ScreenResolution.width, g_ScreenResolution.height, DEPTH_BUFFER_FORMAT, true);
-
-    float color[4] = {1, 1 , 1, 1};
-
-    g_D3DBufferManager.CreateTextureFromColor("white", color);
+    // Todo : Maybe load these directly when loaded
+    g_D3DBufferManager.CreateTextureFromColor(DEFAULT_ALBEDO, 1.f, 1.f, 1.f, 1.f);
+    g_D3DBufferManager.CreateTextureFromColor(DEFAULT_NORMAL, 0.5f, 0.5f, 1.f, 1.f);
 
     g_D3DRenderTargetManager.InitializeRenderTargetFromTexture(mainRT, test_texture);
     g_D3DRenderTargetManager.InitializeDepthBufferFromTexture(mainDepth, test_depth);
@@ -719,6 +719,14 @@ int main()
     mainDepth->SetDebugName(L"Main Depth");
 
     MSG message = {};
+
+    D3DMesh oGroundMesh;
+    D3DMesh oTableMesh;
+    D3DMesh oMugMesh;
+
+    oGroundMesh.Initialize("ground", D3DDevice::s_device.Get(), true);
+    oTableMesh.Initialize("table", D3DDevice::s_device.Get(), true);
+    oMugMesh.Initialize("mug", D3DDevice::s_device.Get(), true);
 
     while (g_bIsRunning)
     {

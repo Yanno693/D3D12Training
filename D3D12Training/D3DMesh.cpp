@@ -47,27 +47,35 @@ void D3DMesh::ParseObject(std::string a_sPath)
 	// Texture Loading
 
 	m_pMaterial = new GameMaterial();
+	m_pMaterial->m_oTexturesAddress = new D3DTextureAddress();
 	XMLElement* pXMLMaterial = pXMLRoot->FirstChildElement("material");
 	if (pXMLMaterial)
 	{
 		XMLElement* pXMLAlbedo = pXMLMaterial->FirstChildElement("albedo");
-		if (pXMLAlbedo)
-		{
-			m_pMaterial->SetTexture(
-				GameMaterialTextureIndex::Albedo,
-				g_D3DBufferManager.RequestTexture(pXMLAlbedo->GetText())
-			);
-		}
+		m_pMaterial->SetTexture(
+			GameMaterialTextureIndex::Albedo,
+			pXMLAlbedo ? g_D3DBufferManager.RequestTexture(pXMLAlbedo->GetText()) : g_D3DBufferManager.RequestTexture(DEFAULT_ALBEDO)
+		);
 
 		XMLElement* pXMLNormal = pXMLMaterial->FirstChildElement("normal");
-		if (pXMLNormal)
-		{
-			m_pMaterial->SetTexture(
-				GameMaterialTextureIndex::Normal,
-				g_D3DBufferManager.RequestTexture(pXMLNormal->GetText())
-			);
-		}
+		m_pMaterial->SetTexture(
+			GameMaterialTextureIndex::Normal,
+			pXMLNormal ? g_D3DBufferManager.RequestTexture(pXMLNormal->GetText()) : g_D3DBufferManager.RequestTexture(DEFAULT_NORMAL)
+		);
 	}
+	else
+	{
+		m_pMaterial->SetTexture(
+			GameMaterialTextureIndex::Albedo,
+			g_D3DBufferManager.RequestTexture(DEFAULT_ALBEDO)
+		);
+
+		m_pMaterial->SetTexture(
+			GameMaterialTextureIndex::Normal,
+			g_D3DBufferManager.RequestTexture(DEFAULT_NORMAL)
+		);
+	}
+	g_D3DBufferManager.SetTextureForRenderingDirty(true);
 
 	XMLElement* pXMLTransform = pXMLRoot->FirstChildElement("transform");
 	assert(pXMLTransform != nullptr);
@@ -149,6 +157,7 @@ void D3DMesh::ParseModelGLTF(std::string const a_sPath, std::string const a_sPat
 	json oGLTFFileJson = json::parse(oGLTFStream);
 	assert(!oGLTFFileJson.empty());
 
+	// Vertex position
 	UINT oGLTFPositionAccessorIndex = oGLTFFileJson["meshes"][0]["primitives"][0]["attributes"]["POSITION"].get<UINT>();
 	UINT oGLTFPositionBufferViewID = oGLTFFileJson["accessors"][oGLTFPositionAccessorIndex]["bufferView"].get<UINT>();
 	UINT oGLTFPositionCount = oGLTFFileJson["accessors"][oGLTFPositionAccessorIndex]["count"].get<UINT>();
@@ -159,6 +168,7 @@ void D3DMesh::ParseModelGLTF(std::string const a_sPath, std::string const a_sPat
 		;
 	UINT oGLTFPositionLengthInBuffer = oGLTFFileJson["bufferViews"][oGLTFPositionBufferViewID]["byteLength"].get<UINT>();
 
+	// UV
 	UINT oGLTFUVAccessorIndex = oGLTFFileJson["meshes"][0]["primitives"][0]["attributes"]["TEXCOORD_0"].get<UINT>();
 	UINT oGLTFUVBufferViewID = oGLTFFileJson["accessors"][oGLTFUVAccessorIndex]["bufferView"].get<UINT>();
 	UINT oGLTFUVCount = oGLTFFileJson["accessors"][oGLTFUVAccessorIndex]["count"].get<UINT>();
@@ -168,6 +178,7 @@ void D3DMesh::ParseModelGLTF(std::string const a_sPath, std::string const a_sPat
 		(oGLTFFileJson["accessors"][oGLTFUVAccessorIndex].contains("byteOffset") ? oGLTFFileJson["accessors"][oGLTFUVAccessorIndex]["byteOffset"].get<UINT>() : 0);
 	UINT oGLTFUVLengthInBuffer = oGLTFFileJson["bufferViews"][oGLTFUVBufferViewID]["byteLength"].get<UINT>();
 
+	// Normal
 	UINT oGLTFNormalAccessorIndex = oGLTFFileJson["meshes"][0]["primitives"][0]["attributes"]["NORMAL"].get<UINT>();
 	UINT oGLTFNormalBufferViewID = oGLTFFileJson["accessors"][oGLTFNormalAccessorIndex]["bufferView"].get<UINT>();
 	UINT oGLTFNormalCount = oGLTFFileJson["accessors"][oGLTFNormalAccessorIndex]["count"].get<UINT>();
@@ -177,6 +188,7 @@ void D3DMesh::ParseModelGLTF(std::string const a_sPath, std::string const a_sPat
 		(oGLTFFileJson["accessors"][oGLTFNormalAccessorIndex].contains("byteOffset") ? oGLTFFileJson["accessors"][oGLTFNormalAccessorIndex]["byteOffset"].get<UINT>() : 0);
 	UINT oGLTFNormalLengthInBuffer = oGLTFFileJson["bufferViews"][oGLTFNormalBufferViewID]["byteLength"].get<UINT>();
 
+	// Index
 	UINT oGLTFIndicesAccessorIndex = oGLTFFileJson["meshes"][0]["primitives"][0]["indices"].get<UINT>();
 	UINT oGLTFIndicesBufferViewID = oGLTFFileJson["accessors"][oGLTFIndicesAccessorIndex]["bufferView"].get<UINT>();
 	UINT oGLTFIndicesCount = oGLTFFileJson["accessors"][oGLTFIndicesAccessorIndex]["count"].get<UINT>();
@@ -185,6 +197,26 @@ void D3DMesh::ParseModelGLTF(std::string const a_sPath, std::string const a_sPat
 		(oGLTFFileJson["bufferViews"][oGLTFIndicesBufferViewID].contains("byteOffset") ? oGLTFFileJson["bufferViews"][oGLTFIndicesBufferViewID]["byteOffset"].get<UINT>() : 0) +
 		(oGLTFFileJson["accessors"][oGLTFIndicesAccessorIndex].contains("byteOffset") ? oGLTFFileJson["accessors"][oGLTFIndicesAccessorIndex]["byteOffset"].get<UINT>() : 0);
 	UINT oGLTFIndicesLengthInBuffer = oGLTFFileJson["bufferViews"][oGLTFIndicesBufferViewID]["byteLength"].get<UINT>();
+
+	// Tangent
+	UINT oGLTFTangentAccessorIndex = 0;
+	UINT oGLTFTangentBufferViewID = 0;
+	UINT oGLTFTangentCount = oGLTFIndicesCount;
+	UINT oGLTFTangentStride = 12; // VEC3
+	UINT oGLTFTangentDataInBuffer = 0;
+	UINT oGLTFTangentLengthInBuffer = oGLTFTangentCount * oGLTFTangentStride;
+	bool bHasTangent = oGLTFFileJson["meshes"][0]["primitives"][0]["attributes"]["TANGENT"] != nullptr;
+	if (bHasTangent)
+	{
+		oGLTFTangentAccessorIndex = oGLTFFileJson["meshes"][0]["primitives"][0]["attributes"]["TANGENT"].get<UINT>();
+		oGLTFTangentBufferViewID = oGLTFFileJson["accessors"][oGLTFTangentAccessorIndex]["bufferView"].get<UINT>();
+		oGLTFTangentCount = oGLTFFileJson["accessors"][oGLTFTangentAccessorIndex]["count"].get<UINT>();
+		oGLTFTangentStride = oGLTFFileJson["bufferViews"][oGLTFTangentBufferViewID].contains("byteStride") ? oGLTFFileJson["bufferViews"][oGLTFTangentBufferViewID]["byteStride"].get<UINT>() : 12; // VEC3
+		oGLTFTangentDataInBuffer =
+			(oGLTFFileJson["bufferViews"][oGLTFTangentBufferViewID].contains("byteOffset") ? oGLTFFileJson["bufferViews"][oGLTFTangentBufferViewID]["byteOffset"].get<UINT>() : 0) +
+			(oGLTFFileJson["accessors"][oGLTFTangentAccessorIndex].contains("byteOffset") ? oGLTFFileJson["accessors"][oGLTFTangentAccessorIndex]["byteOffset"].get<UINT>() : 0);
+		oGLTFTangentLengthInBuffer = oGLTFFileJson["bufferViews"][oGLTFTangentBufferViewID]["byteLength"].get<UINT>();
+	}
 
 	m_oMeshPositionData.ptr = (char*)malloc(oGLTFPositionLengthInBuffer);
 	assert(m_oMeshPositionData.ptr != nullptr);
@@ -213,6 +245,11 @@ void D3DMesh::ParseModelGLTF(std::string const a_sPath, std::string const a_sPat
 	m_oMeshIndicesData.size = oGLTFIndicesLengthInBuffer;
 	m_oMeshIndicesData.stride = (UINT)GetGLTFTypeSize(oGLTFIndicesType);
 	m_oMeshIndicesData.count = oGLTFIndicesCount;
+
+	// 
+	m_oMeshTangentData.ptr = (char*)malloc(oGLTFTangentLengthInBuffer);
+	m_oMeshBitangentData.ptr = (char*)malloc(oGLTFTangentLengthInBuffer);
+	// Todo : The rest for tangent andbitangent
 
 	m_uiIndicesCount = oGLTFIndicesCount;
 	m_uiTriangleCount = oGLTFIndicesCount / 3;
@@ -259,8 +296,6 @@ void D3DMesh::CreateGPUBuffers()
 			oVertexDataIt + m_oMeshPositionData.stride + m_oMeshNormalData.stride,
 			m_oMeshUVData.ptr + i * m_oMeshUVData.stride,
 			m_oMeshUVData.stride);
-		/*
-		*/
 
 		oVertexDataIt += uiVertexStride;
 	}
@@ -567,7 +602,7 @@ void D3DMesh::Draw(ID3D12GraphicsCommandList* a_pCommandList)
 	if(pAlbedoTexture)
 		a_pCommandList->SetGraphicsRootDescriptorTable(3, m_pMaterial->GetTexture(GameMaterialTextureIndex::Albedo)->m_eSRVGPUHandle);
 	else
-		a_pCommandList->SetGraphicsRootDescriptorTable(3, g_D3DBufferManager.RequestTexture("white")->m_eSRVGPUHandle);
+		a_pCommandList->SetGraphicsRootDescriptorTable(3, g_D3DBufferManager.RequestTexture(DEFAULT_ALBEDO)->m_eSRVGPUHandle);
 
 
 	D3D12_RECT rect;

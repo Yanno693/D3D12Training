@@ -3,14 +3,14 @@
 #include "DDS.h"
 #include <fstream>
 
-void D3DBufferManager::Initialize(ID3D12Device* a_pDevice, int a_iNbDecriptors)
+void D3DBufferManager::Initialize(ID3D12Device* a_pDevice, UINT a_uiNbDecriptors)
 {
     assert(m_pDevice == nullptr);
     m_pDevice = a_pDevice;
 
     D3D12_DESCRIPTOR_HEAP_DESC desc = {};
     desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-    desc.NumDescriptors = a_iNbDecriptors;
+    desc.NumDescriptors = a_uiNbDecriptors;
     desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
     desc.NodeMask = 0;
 
@@ -20,10 +20,14 @@ void D3DBufferManager::Initialize(ID3D12Device* a_pDevice, int a_iNbDecriptors)
         assert(0);
     }
 
-    m_uiCurrentDecriptorOffset = m_pDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
-    m_uiCurrentGPUDecriptorOffset = m_pDescriptorHeap->GetGPUDescriptorHandleForHeapStart();
+    // Here I start at the end of the heap, this will make it easier for me to handle descriptor tables for mesh textures
     m_uiSRVSizeInHeap = a_pDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-
+    m_uiTextureCurrentDecriptorOffset =    m_pDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
+    m_uiCurrentDecriptorOffset =           m_pDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
+    m_uiCurrentDecriptorOffset.ptr +=      m_uiSRVSizeInHeap * (a_uiNbDecriptors - 1);
+    m_uiTextureCurrentGPUDecriptorOffset = m_pDescriptorHeap->GetGPUDescriptorHandleForHeapStart();
+    m_uiCurrentGPUDecriptorOffset =        m_pDescriptorHeap->GetGPUDescriptorHandleForHeapStart();
+    m_uiCurrentGPUDecriptorOffset.ptr +=   m_uiSRVSizeInHeap * (a_uiNbDecriptors - 1);
 
     m_pUploadBuffer = new D3DGenericBuffer;
     InitializeGenericBuffer(m_pUploadBuffer, UPLOAD_BUFFER_SIZE);
@@ -76,7 +80,7 @@ void D3DBufferManager::InitializeConstantBuffer(D3DConstantBuffer* a_pConstantBu
     m_pDevice->CreateConstantBufferView(&descCB, m_uiCurrentDecriptorOffset);
     a_pConstantBuffer->m_eGPUHandle = m_uiCurrentGPUDecriptorOffset;
 
-    IncrementOffset();
+    DecreaseDescriptorOffset();
 
     a_pConstantBuffer->m_pDevice = m_pDevice;
     a_pConstantBuffer->m_uiResourceSize = a_uiSizeInBytes;
@@ -159,7 +163,7 @@ void D3DBufferManager::InitializeIndexBuffer(D3DIndexBuffer* a_pIndexBuffer, UIN
     oView.SizeInBytes = a_uiSizeInBytes;
     oView.Format = a_bIsInt16 ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;
 
-    IncrementOffset();
+    DecreaseDescriptorOffset();
 
     a_pIndexBuffer->m_eCurrentState = a_eDefaultState;
     a_pIndexBuffer->m_oView = oView;
@@ -201,7 +205,7 @@ void D3DBufferManager::InitializeVertexBuffer(D3DVertexBuffer* a_pVertexBuffer, 
     oView.SizeInBytes = a_uiSizeInBytes;
     oView.StrideInBytes = a_uiVertexSize;
 
-    IncrementOffset();
+    DecreaseDescriptorOffset();
 
     a_pVertexBuffer->m_eCurrentState = a_eDefaultState;
     a_pVertexBuffer->m_oView = oView;
@@ -293,18 +297,20 @@ void D3DBufferManager::InitializeTexture(D3DTexture* a_pTexture, UINT const a_ui
     m_pDevice->CreateShaderResourceView(a_pTexture->m_pResource.Get(), &descSRV, m_uiCurrentDecriptorOffset);
 
     a_pTexture->m_eSRVGPUHandle = m_uiCurrentGPUDecriptorOffset;
+    a_pTexture->m_eSRVCPUHandle = m_uiCurrentDecriptorOffset;
     a_pTexture->m_oSRVView = descSRV;
 
-    IncrementOffset();
+    DecreaseDescriptorOffset();
 
     if (!a_bIsDepth)
     {
         m_pDevice->CreateUnorderedAccessView(a_pTexture->m_pResource.Get(), nullptr, &descUAV, m_uiCurrentDecriptorOffset);
 
         a_pTexture->m_eUAVGPUHandle = m_uiCurrentGPUDecriptorOffset;
+        a_pTexture->m_eUAVCPUHandle = m_uiCurrentDecriptorOffset;
         a_pTexture->m_oUAVView = descUAV;
 
-        IncrementOffset();
+        DecreaseDescriptorOffset();
     }
 
     a_pTexture->m_uiResourceSize = allocationInfo.SizeInBytes;
@@ -354,6 +360,51 @@ D3DTexture* D3DBufferManager::CreateTextureFromColor(std::string a_sName, float 
     float afColor[4] = { a_fR, a_fG, a_fB, a_fA };
 
     return CreateTextureFromColor(a_sName, afColor);
+}
+
+void D3DBufferManager::SetTextureForRenderingDirty(bool a_bDirty)
+{
+    m_bTextureForRenderingDirty = a_bDirty;
+}
+
+bool D3DBufferManager::IsTextureForRenderingDirty() const
+{
+    return m_bTextureForRenderingDirty;
+}
+
+void D3DBufferManager::RegisterTexturesForRendering(std::map<UINT, D3DTexture*> a_oTextures, D3DTextureAddress*& a_rsTexturesAddress)
+{
+    assert(a_rsTexturesAddress != nullptr);
+
+    std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> vSrcSrvHandles; // Here we will make an arrayd of CPU descriptors to have the contiguous in the descriptor heap
+    std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> vDstSrvHandles; // Here we will make an arrayd of CPU descriptors to have the contiguous in the descriptor heap
+    std::vector<UINT> vuiIndex; // This is because my handles are maybe not contiguous in memory
+    vSrcSrvHandles.reserve(a_oTextures.size());
+    
+    a_rsTexturesAddress->m_eSRVCPUHandle = m_uiTextureCurrentDecriptorOffset;
+    a_rsTexturesAddress->m_eSRVGPUHandle = m_uiTextureCurrentGPUDecriptorOffset;
+
+    for (UINT iTextureId = 0; iTextureId < a_oTextures.size(); iTextureId++)
+    {
+        assert(a_oTextures[iTextureId] != nullptr);
+        vSrcSrvHandles.emplace_back(a_oTextures[iTextureId]->m_eSRVCPUHandle);
+        vDstSrvHandles.emplace_back(m_uiTextureCurrentDecriptorOffset);
+        vuiIndex.emplace_back(1);
+
+        m_uiTextureCurrentDecriptorOffset.ptr += m_uiSRVSizeInHeap;
+        m_uiTextureCurrentGPUDecriptorOffset.ptr += m_uiSRVSizeInHeap;
+    }
+
+
+    m_pDevice->CopyDescriptors(
+        vDstSrvHandles.size(),
+        vDstSrvHandles.data(),
+        vuiIndex.data(),
+        vSrcSrvHandles.size(),
+        vSrcSrvHandles.data(),
+        vuiIndex.data(),
+        D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV
+    );
 }
 
 D3DTexture* D3DBufferManager::CreateTextureFromColor(std::string a_sName, float* a_pRGBAColor)
@@ -407,6 +458,7 @@ D3DTexture* D3DBufferManager::CreateTextureFromColor(std::string a_sName, float*
     m_pDevice->CreateShaderResourceView(pTexture->m_pResource.Get(), &descSRV, m_uiCurrentDecriptorOffset);
 
     pTexture->m_eSRVGPUHandle = m_uiCurrentGPUDecriptorOffset;
+    pTexture->m_eSRVCPUHandle = m_uiCurrentDecriptorOffset;
     pTexture->m_oSRVView = descSRV;
     pTexture->m_uiWidth = 32;
     pTexture->m_uiHeight = 32;
@@ -416,7 +468,7 @@ D3DTexture* D3DBufferManager::CreateTextureFromColor(std::string a_sName, float*
     pTexture->m_uiResourceSize = allocationInfo.SizeInBytes;
     pTexture->m_eCurrentState = D3D12_RESOURCE_STATE_COPY_DEST;
 
-    IncrementOffset();
+    DecreaseDescriptorOffset();
 
     pTexture->m_pUploadData = new char[allocationInfo.SizeInBytes];
     
@@ -444,13 +496,12 @@ void D3DBufferManager::RequestDescriptor(D3D12_CPU_DESCRIPTOR_HANDLE& out_rCPUHa
     out_rCPUHandle = m_uiCurrentDecriptorOffset;
     out_rGPUHandle = m_uiCurrentGPUDecriptorOffset;
     
-    IncrementOffset();
+    DecreaseDescriptorOffset();
 }
 
-// Upload Texture from CPU memory to GPU memory, using 
+// Upload Texture from CPU memory to GPU memory, using and upload buffer
 void D3DBufferManager::UploadTextures(ID3D12GraphicsCommandList* a_pCommandList)
 {
-
     std::queue<std::pair<std::string, D3DTexture*>> oReadyToLoad;
 
     // 1. Get as many texture as I can in my upload buffer and set them ready to load
@@ -478,7 +529,7 @@ void D3DBufferManager::UploadTextures(ID3D12GraphicsCommandList* a_pCommandList)
         }
     }
 
-    UINT64 uiUploadPointer = 0; // This pointer moves texture to texture in he upload buffer
+    UINT64 uiUploadPointer = 0; // This pointer moves texture to texture in the upload buffer
 
     m_pUploadBuffer->TransitionState(a_pCommandList, D3D12_RESOURCE_STATE_COPY_SOURCE);
 
@@ -546,14 +597,14 @@ void D3DBufferManager::UploadTextures(ID3D12GraphicsCommandList* a_pCommandList)
         m_oLoadedTexture[oTexture.first] = pTexture;
         pTexture->TransitionState(a_pCommandList, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
-        uiUploadPointer += pTexture->GetResourceSize(); // Increasing of the texture size to place the pointer to the start of the next texture
+        uiUploadPointer += pTexture->GetResourceSize(); // Increasing of pointer to the texture size to place the pointer to the start of the next texture
     }
 
     m_uiCurrentUploadBufferAllocation = 0;
     // And ... i guess we're good, right ?
 }
 
-bool D3DBufferManager::isUploadTextureQueueEmpty()
+bool D3DBufferManager::IsUploadTextureQueueEmpty()
 {
     return m_oTextureToLoad.empty();
 }
@@ -563,13 +614,13 @@ ID3D12DescriptorHeap* D3DBufferManager::GetHeap()
     return m_pDescriptorHeap.Get();
 }
 
-void D3DBufferManager::IncrementOffset()
+void D3DBufferManager::DecreaseDescriptorOffset()
 {
     assert(m_pDevice != nullptr);
-    m_uiCurrentDecriptorOffset.ptr += m_uiSRVSizeInHeap;
+    m_uiCurrentDecriptorOffset.ptr -= m_uiSRVSizeInHeap;
     if (m_uiCurrentGPUDecriptorOffset.ptr != 0) // 0 mean we don't have a Shader Visible descriptor Heap
     {
-        m_uiCurrentGPUDecriptorOffset.ptr += m_uiSRVSizeInHeap;
+        m_uiCurrentGPUDecriptorOffset.ptr -= m_uiSRVSizeInHeap;
     }
 }
 
@@ -598,6 +649,7 @@ DXGI_FORMAT GetDXGIFromDDSFormat(const DirectX::DDS_PIXELFORMAT& a_roPixelFormat
 
         if (a_roPixelFormat.fourCC == DirectX::DDSPF_BC5_SNORM.fourCC)
             return DXGI_FORMAT_BC5_SNORM;
+        // TODO : Do all the other formats
     }
 
     return DXGI_FORMAT_UNKNOWN;
@@ -666,6 +718,7 @@ D3DTexture* D3DBufferManager::LoadTextureFromDDSFile(std::string a_sPath, std::s
     m_pDevice->CreateShaderResourceView(pTexture->m_pResource.Get(), &descSRV, m_uiCurrentDecriptorOffset);
 
     pTexture->m_eSRVGPUHandle = m_uiCurrentGPUDecriptorOffset;
+    pTexture->m_eSRVCPUHandle = m_uiCurrentDecriptorOffset;
     pTexture->m_oSRVView = descSRV;
     pTexture->m_uiWidth = oDDSTextureHeader.width;
     pTexture->m_uiHeight = oDDSTextureHeader.height;
@@ -686,7 +739,7 @@ D3DTexture* D3DBufferManager::LoadTextureFromDDSFile(std::string a_sPath, std::s
     pTexture->m_uiResourceSize = allocationInfo.SizeInBytes;
     pTexture->m_eCurrentState = D3D12_RESOURCE_STATE_COPY_DEST;
 
-    IncrementOffset();
+    DecreaseDescriptorOffset();
 
     pTexture->m_pUploadData = new char[allocationInfo.SizeInBytes];
     oTextureStream.read(pTexture->m_pUploadData, allocationInfo.SizeInBytes);

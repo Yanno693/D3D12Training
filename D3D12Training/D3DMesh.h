@@ -49,6 +49,8 @@ private:
 	ExtraPtr m_oMeshUVData = {};
 	ExtraPtr m_oMeshNormalData = {};
 	ExtraPtr m_oMeshIndicesData = {};
+	ExtraPtr m_oMeshTangentData = {};
+	ExtraPtr m_oMeshBitangentData = {};
 
 	/*
 	UINT m_uiVertexElemCount = 0;
@@ -78,7 +80,7 @@ public:
 	D3DHitShader* m_pHitShader = nullptr;
 
 	/*
-	* Iniitialize a mesh with a single triangle
+	* Initialize a mesh with a single triangle
 	*/
 	void InitializeDebug(ID3D12Device5* a_pDevice, bool a_bUsesRayTracing = false);
 
@@ -100,5 +102,6 @@ public:
 	bool m_bIsIndexed = false;
 
 	static std::vector<D3DMesh> s_MeshList;
+	static std::vector<GameMaterial*> GetMeshMaterials; // A list of materials orderer in the order of meshes
 };
 

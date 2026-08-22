@@ -13,7 +13,7 @@ private:
 	std::vector<D3DMesh*> m_apCurrentSceneMesh; // Binded mesh for render
 	ID3D12Device5* m_pDevice = nullptr;
 	bool m_bInitialized = false;
-	D3DTexture* m_pRenderTarget = nullptr; // To refactor i guess, a UAV to draw
+	D3DTexture* m_pRenderTarget = nullptr; // TODO : To refactor i guess, a UAV to draw the scene
  
 	D3D12_CPU_DESCRIPTOR_HANDLE m_uiBVH_CPUHandle = {};
 	D3D12_GPU_DESCRIPTOR_HANDLE m_uiBVH_GPUHandle = {};
@@ -24,8 +24,8 @@ private:
 
 	D3DGenericBuffer m_oSceneShaderIDBuffer;
 
-	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_pRayTracingRootSignature;
-	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_pRayTracingLocalRootSignature;
+	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_pRayTracingRootSignature; // Root Signature for the scene, shared between all objects
+	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_pRayTracingLocalRootSignature; // Root signature per mesh
 	Microsoft::WRL::ComPtr<ID3D12StateObject> m_pRayTracingPSO;
 
 	void CreateBVH(ID3D12GraphicsCommandList4* a_pCommandList);

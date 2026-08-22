@@ -205,35 +205,35 @@ void D3DRayTracingScene::CreateShaderIDBuffer()
 	// 3. Hit shader
 	// For each mesh -> pair of Mesh Direct Hit Shader + Occlusion Hit Shader
 	void* pOcclusionShaderID = oRTPSOProperties->GetShaderIdentifier(L"occlusion_hitgroup");
-	for (UINT iMesh = 0; iMesh < D3DMesh::s_MeshList.size(); iMesh++)
+	for (UINT uiMeshId = 0; uiMeshId < D3DMesh::s_MeshList.size(); uiMeshId++)
 	{
-		auto& roHitShader = D3DMesh::s_MeshList[iMesh].m_pHitShader;
+		auto& roHitShader = D3DMesh::s_MeshList[uiMeshId].m_pHitShader;
 		std::wstring szWideShaderIdentifier(roHitShader->m_szShaderIdentifier.begin(), roHitShader->m_szShaderIdentifier.end());
 		szWideShaderIdentifier += L"group";
 		pShaderID = oRTPSOProperties->GetShaderIdentifier(szWideShaderIdentifier.c_str());
 
-		memcpy(apShaderIDData + (1 + oMissShaderSet.size() + 2 * iMesh) * D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT * 2, pShaderID, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-		memcpy(apShaderIDData + (1 + oMissShaderSet.size() + 2 * iMesh + 1) * D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT * 2, pOcclusionShaderID, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+		memcpy(apShaderIDData + (1 + oMissShaderSet.size() + 2 * uiMeshId) * D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT * 2, pShaderID, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+		memcpy(apShaderIDData + (1 + oMissShaderSet.size() + 2 * uiMeshId + 1) * D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT * 2, pOcclusionShaderID, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
 	
 		// Setting/Binding Vertex and Index buffers to local root signature
-		D3D12_GPU_VIRTUAL_ADDRESS pVertexBufferGPUAddress = D3DMesh::s_MeshList[iMesh].m_oVertexBuffer.m_pResource.Get()->GetGPUVirtualAddress();
-		D3D12_GPU_VIRTUAL_ADDRESS pIndexBufferGPUAddress = D3DMesh::s_MeshList[iMesh].m_oIndexBuffer.m_pResource.Get()->GetGPUVirtualAddress();
-
-		D3DTexture* pAlbedoTexture = D3DMesh::s_MeshList[iMesh].m_pMaterial->GetTexture(GameMaterialTextureIndex::Albedo);
-		D3D12_GPU_DESCRIPTOR_HANDLE pAlbedoTextureGPUAddress = pAlbedoTexture ? pAlbedoTexture->m_eSRVGPUHandle : g_D3DBufferManager.RequestTexture("white")->m_eSRVGPUHandle;
+		D3D12_GPU_VIRTUAL_ADDRESS pVertexBufferGPUAddress = D3DMesh::s_MeshList[uiMeshId].m_oVertexBuffer.m_pResource.Get()->GetGPUVirtualAddress();
+		D3D12_GPU_VIRTUAL_ADDRESS pIndexBufferGPUAddress = D3DMesh::s_MeshList[uiMeshId].m_oIndexBuffer.m_pResource.Get()->GetGPUVirtualAddress();
+		
+		D3DTexture* pAlbedoTexture = D3DMesh::s_MeshList[uiMeshId].m_pMaterial->GetTexture(GameMaterialTextureIndex::Albedo);
+		D3D12_GPU_DESCRIPTOR_HANDLE pAlbedoTextureGPUAddress = D3DMesh::s_MeshList[uiMeshId].m_pMaterial->m_oTexturesAddress->m_eSRVGPUHandle;
 
 		memcpy(
-			apShaderIDData + ((1 + oMissShaderSet.size() + 2 * iMesh) * D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT * 2) + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES + sizeof(D3D12_GPU_VIRTUAL_ADDRESS) * 0,
+			apShaderIDData + ((1 + oMissShaderSet.size() + 2 * uiMeshId) * D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT * 2) + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES + sizeof(D3D12_GPU_VIRTUAL_ADDRESS) * 0,
 			&pVertexBufferGPUAddress,
 			sizeof(D3D12_GPU_VIRTUAL_ADDRESS));
 
 		memcpy(
-			apShaderIDData + ((1 + oMissShaderSet.size() + 2 * iMesh) * D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT * 2) + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES + sizeof(D3D12_GPU_VIRTUAL_ADDRESS) * 1,
+			apShaderIDData + ((1 + oMissShaderSet.size() + 2 * uiMeshId) * D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT * 2) + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES + sizeof(D3D12_GPU_VIRTUAL_ADDRESS) * 1,
 			&pIndexBufferGPUAddress,
 			sizeof(D3D12_GPU_VIRTUAL_ADDRESS));
 
 		memcpy(
-			apShaderIDData + ((1 + oMissShaderSet.size() + 2 * iMesh) * D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT * 2) + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES + sizeof(D3D12_GPU_VIRTUAL_ADDRESS) * 2,
+			apShaderIDData + ((1 + oMissShaderSet.size() + 2 * uiMeshId) * D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT * 2) + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES + sizeof(D3D12_GPU_VIRTUAL_ADDRESS) * 2,
 			&pAlbedoTextureGPUAddress,
 			sizeof(D3D12_GPU_DESCRIPTOR_HANDLE));
 	}
@@ -368,19 +368,19 @@ void D3DRayTracingScene::CreateRayTracingRootSignatures(ID3D12Device5* a_pDevice
 	oIndexBufferRootParameter.Descriptor.ShaderRegister = 3; // I'll leave slot 1 for some Scene parameters
 	oIndexBufferRootParameter.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
-	D3D12_DESCRIPTOR_RANGE oSRVRange = {};
-	oSRVRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-	oSRVRange.NumDescriptors = 1;
-	oSRVRange.BaseShaderRegister = 10;
-	oSRVRange.RegisterSpace = 0;
+	D3D12_DESCRIPTOR_RANGE oTextureSRVRange = {};
+	oTextureSRVRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+	oTextureSRVRange.NumDescriptors = 2;
+	oTextureSRVRange.BaseShaderRegister = 10;
+	oTextureSRVRange.RegisterSpace = 0;
 
-	D3D12_ROOT_PARAMETER oAlbedoRootParameter = {};
-	oAlbedoRootParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-	oAlbedoRootParameter.DescriptorTable.NumDescriptorRanges = 1;
-	oAlbedoRootParameter.DescriptorTable.pDescriptorRanges = &oSRVRange;
-	oAlbedoRootParameter.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+	D3D12_ROOT_PARAMETER oTextureRootParameter = {};
+	oTextureRootParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+	oTextureRootParameter.DescriptorTable.NumDescriptorRanges = 1;
+	oTextureRootParameter.DescriptorTable.pDescriptorRanges = &oTextureSRVRange;
+	oTextureRootParameter.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
-	D3D12_ROOT_PARAMETER pRayTracingLocalRootParameters[] = { oVertexBufferRootParameter, oIndexBufferRootParameter, oAlbedoRootParameter };
+	D3D12_ROOT_PARAMETER pRayTracingLocalRootParameters[] = { oVertexBufferRootParameter, oIndexBufferRootParameter, oTextureRootParameter };
 
 	D3D12_ROOT_SIGNATURE_DESC lrsDesc = {};
 	lrsDesc.NumParameters = _countof(pRayTracingLocalRootParameters);

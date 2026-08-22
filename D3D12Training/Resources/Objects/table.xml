@@ -4,6 +4,7 @@
     <rtshader>basicsolidrt</rtshader>
     <material>
         <albedo>table_albedo</albedo>
+        <normal>table_normal</normal>
     </material>
     <transform>
         <position>

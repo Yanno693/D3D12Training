@@ -72,4 +72,5 @@ void D3DTexture::SetDebugName(LPCWSTR a_sName)
 {
     assert(m_pResource != nullptr);
     m_pResource->SetName(a_sName);
+	m_szDebugName = a_sName;
 }

@@ -58,3 +58,5 @@ compileShaderMissRT("occlusion")
 # Materials hit shaders
 compileShaderRT("basicsolidrt")
 compileShaderRT("basicsolidrt2")
+
+Write-Output "Compilation Complete !"
