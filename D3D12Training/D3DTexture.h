@@ -23,6 +23,7 @@ private:
 	UINT m_uiMipCount = 0;
 	UINT m_uiRowPitch = 0;
 	DXGI_FORMAT m_eFormat = DXGI_FORMAT_UNKNOWN;
+
 	std::wstring m_szDebugName;
 
 	char* m_pUploadData = nullptr; // Texture data to upload before the texture is ready to use

@@ -48,9 +48,8 @@ private:
 	ExtraPtr m_oMeshPositionData = {};
 	ExtraPtr m_oMeshUVData = {};
 	ExtraPtr m_oMeshNormalData = {};
-	ExtraPtr m_oMeshIndicesData = {};
 	ExtraPtr m_oMeshTangentData = {};
-	ExtraPtr m_oMeshBitangentData = {};
+	ExtraPtr m_oMeshIndicesData = {};
 
 	/*
 	UINT m_uiVertexElemCount = 0;

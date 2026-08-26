@@ -141,6 +141,7 @@ size_t GetGLTFTypeSize(UINT a_uiType)
 void D3DMesh::ParseModelGLTF(std::string const a_sPath, std::string const a_sPathBin)
 {
 	using json = nlohmann::json;
+	using namespace DirectX;
 	
 	std::ifstream oGLTFStream(a_sPath);
 	std::ifstream oGLTFBinStream(a_sPathBin, std::ios::binary | :: std::ios::ate);
@@ -202,7 +203,7 @@ void D3DMesh::ParseModelGLTF(std::string const a_sPath, std::string const a_sPat
 	UINT oGLTFTangentAccessorIndex = 0;
 	UINT oGLTFTangentBufferViewID = 0;
 	UINT oGLTFTangentCount = oGLTFIndicesCount;
-	UINT oGLTFTangentStride = 12; // VEC3
+	UINT oGLTFTangentStride = 16; // Float4
 	UINT oGLTFTangentDataInBuffer = 0;
 	UINT oGLTFTangentLengthInBuffer = oGLTFTangentCount * oGLTFTangentStride;
 	bool bHasTangent = oGLTFFileJson["meshes"][0]["primitives"][0]["attributes"]["TANGENT"] != nullptr;
@@ -246,13 +247,126 @@ void D3DMesh::ParseModelGLTF(std::string const a_sPath, std::string const a_sPat
 	m_oMeshIndicesData.stride = (UINT)GetGLTFTypeSize(oGLTFIndicesType);
 	m_oMeshIndicesData.count = oGLTFIndicesCount;
 
-	// 
 	m_oMeshTangentData.ptr = (char*)malloc(oGLTFTangentLengthInBuffer);
-	m_oMeshBitangentData.ptr = (char*)malloc(oGLTFTangentLengthInBuffer);
-	// Todo : The rest for tangent andbitangent
+	assert(m_oMeshTangentData.ptr != nullptr);
+	m_oMeshTangentData.size = oGLTFTangentLengthInBuffer;
+	m_oMeshTangentData.stride = oGLTFTangentStride;
+	m_oMeshTangentData.count = oGLTFTangentCount;
 
 	m_uiIndicesCount = oGLTFIndicesCount;
 	m_uiTriangleCount = oGLTFIndicesCount / 3;
+
+	if (bHasTangent)
+	{
+		memcpy(m_oMeshTangentData.ptr, oGLTFBinData + oGLTFTangentDataInBuffer, oGLTFTangentLengthInBuffer);
+	}
+	else // Construct tangent per vertex using position data
+	{
+		for (int iTriangle = 0; iTriangle < m_uiTriangleCount; ++iTriangle) // The tangent changes depending on the index, even for the same position
+		{
+			char* pIndicesDataOffset = m_oMeshIndicesData.ptr + (iTriangle * m_oMeshIndicesData.stride * 3);
+			char* pTangentDataOffset = m_oMeshTangentData.ptr + (iTriangle * m_oMeshTangentData.stride * 3);
+
+			UINT uiIndexA, uiIndexB, uiIndexC;
+			if (m_oMeshIndicesData.stride == sizeof(UINT16))
+			{
+				uiIndexA = *(UINT16*)(pIndicesDataOffset);
+				uiIndexB = *(UINT16*)(pIndicesDataOffset + m_oMeshIndicesData.stride);
+				uiIndexC = *(UINT16*)(pIndicesDataOffset + m_oMeshIndicesData.stride * 2);
+			}
+			else
+			{
+				uiIndexA = *(UINT32*)(pIndicesDataOffset);
+				uiIndexB = *(UINT32*)(pIndicesDataOffset + m_oMeshIndicesData.stride);
+				uiIndexC = *(UINT32*)(pIndicesDataOffset + m_oMeshIndicesData.stride * 2);
+			}
+
+			if (true)
+			{
+				// Reference for tangent calculation : https://learnopengl.com/Advanced-Lighting/Normal-Mapping
+				const XMVECTOR oPosA = XMLoadFloat3((DirectX::XMFLOAT3*)(m_oMeshPositionData.ptr + m_oMeshPositionData.stride * uiIndexA));
+				const XMVECTOR oPosB = XMLoadFloat3((DirectX::XMFLOAT3*)(m_oMeshPositionData.ptr + m_oMeshPositionData.stride * uiIndexB));
+				const XMVECTOR oPosC = XMLoadFloat3((DirectX::XMFLOAT3*)(m_oMeshPositionData.ptr + m_oMeshPositionData.stride * uiIndexC));
+				const XMVECTOR oUVA  = XMLoadFloat2((DirectX::XMFLOAT2*)(m_oMeshUVData.ptr       + m_oMeshUVData.stride       * uiIndexA));
+				const XMVECTOR oUVB  = XMLoadFloat2((DirectX::XMFLOAT2*)(m_oMeshUVData.ptr       + m_oMeshUVData.stride       * uiIndexB));
+				const XMVECTOR oUVC  = XMLoadFloat2((DirectX::XMFLOAT2*)(m_oMeshUVData.ptr       + m_oMeshUVData.stride       * uiIndexC));
+			
+				const XMVECTOR oEdge1A    = XMVectorSubtract(oPosB, oPosA);
+				const XMVECTOR oEdge2A    = XMVectorSubtract(oPosC, oPosA);
+				const XMVECTOR oEdge1B    = XMVectorSubtract(oPosC, oPosB);
+				const XMVECTOR oEdge2B    = XMVectorSubtract(oPosA, oPosB);
+				const XMVECTOR oEdge1C    = XMVectorSubtract(oPosA, oPosC);
+				const XMVECTOR oEdge2C    = XMVectorSubtract(oPosB, oPosC);
+				const XMVECTOR oDeltaUV1A = XMVectorSubtract(oUVB, oUVA);
+				const XMVECTOR oDeltaUV2A = XMVectorSubtract(oUVC, oUVA);
+				const XMVECTOR oDeltaUV1B = XMVectorSubtract(oUVC, oUVB);
+				const XMVECTOR oDeltaUV2B = XMVectorSubtract(oUVA, oUVB);
+				const XMVECTOR oDeltaUV1C = XMVectorSubtract(oUVA, oUVC);
+				const XMVECTOR oDeltaUV2C = XMVectorSubtract(oUVB, oUVC);
+
+				//float fa = 1.0f / (DirectX::XMVectorGetX(oDeltaUV1A) * DirectX::XMVectorGetY(oDeltaUV2A) - DirectX::XMVectorGetX(oDeltaUV2A) * DirectX::XMVectorGetY(oDeltaUV1A));
+				//float fb = 1.0f / (DirectX::XMVectorGetX(oDeltaUV1B) * DirectX::XMVectorGetY(oDeltaUV2B) - DirectX::XMVectorGetX(oDeltaUV2B) * DirectX::XMVectorGetY(oDeltaUV1B));
+				//float fc = 1.0f / (DirectX::XMVectorGetX(oDeltaUV1C) * DirectX::XMVectorGetY(oDeltaUV2C) - DirectX::XMVectorGetX(oDeltaUV2C) * DirectX::XMVectorGetY(oDeltaUV1C));
+				float fa = 1.0f / (XMVectorGetX(XMVector2Cross(oDeltaUV1A, oDeltaUV2A)));
+				float fb = 1.0f / (XMVectorGetX(XMVector2Cross(oDeltaUV1B, oDeltaUV2B)));
+				float fc = 1.0f / (XMVectorGetX(XMVector2Cross(oDeltaUV1C, oDeltaUV2C)));
+
+				assert(fa != 0);
+				assert(!isnan(fa));
+				assert(fb != 0);
+				assert(!isnan(fb));
+				assert(fc != 0);
+				assert(!isnan(fc));
+
+				/*
+				XMFLOAT3& rTangentA = *(XMFLOAT3*)(pTangentDataOffset);
+				XMFLOAT3& rTangentB = *(XMFLOAT3*)(pTangentDataOffset + m_oMeshTangentData.stride);
+				XMFLOAT3& rTangentC = *(XMFLOAT3*)(pTangentDataOffset + m_oMeshTangentData.stride * 2);
+				*/
+
+				XMFLOAT4& rTangentA = *(XMFLOAT4*)(m_oMeshTangentData.ptr + m_oMeshTangentData.stride * uiIndexA);
+				XMFLOAT4& rTangentB = *(XMFLOAT4*)(m_oMeshTangentData.ptr + m_oMeshTangentData.stride * uiIndexB);
+				XMFLOAT4& rTangentC = *(XMFLOAT4*)(m_oMeshTangentData.ptr + m_oMeshTangentData.stride * uiIndexC);
+
+				XMFLOAT4 oTangentA(
+					fa * (XMVectorGetY(oDeltaUV2A) * XMVectorGetX(oEdge1A) - XMVectorGetY(oDeltaUV1A) * XMVectorGetX(oEdge2A)),
+					fa * (XMVectorGetY(oDeltaUV2A) * XMVectorGetY(oEdge1A) - XMVectorGetY(oDeltaUV1A) * XMVectorGetY(oEdge2A)),
+					fa * (XMVectorGetY(oDeltaUV2A) * XMVectorGetZ(oEdge1A) - XMVectorGetY(oDeltaUV1A) * XMVectorGetZ(oEdge2A)),
+					1.0f
+				);
+				XMFLOAT4 oTangentB(
+					fb * (XMVectorGetY(oDeltaUV2B) * XMVectorGetX(oEdge1B) - XMVectorGetY(oDeltaUV1B) * XMVectorGetX(oEdge2B)),
+					fb * (XMVectorGetY(oDeltaUV2B) * XMVectorGetY(oEdge1B) - XMVectorGetY(oDeltaUV1B) * XMVectorGetY(oEdge2B)),
+					fb * (XMVectorGetY(oDeltaUV2B) * XMVectorGetZ(oEdge1B) - XMVectorGetY(oDeltaUV1B) * XMVectorGetZ(oEdge2B)),
+					1.0f
+				);
+
+				XMFLOAT4 oTangentC(
+					fc * (XMVectorGetY(oDeltaUV2C) * XMVectorGetX(oEdge1C) - XMVectorGetY(oDeltaUV1C) * XMVectorGetX(oEdge2C)),
+					fc * (XMVectorGetY(oDeltaUV2C) * XMVectorGetY(oEdge1C) - XMVectorGetY(oDeltaUV1C) * XMVectorGetY(oEdge2C)),
+					fc * (XMVectorGetY(oDeltaUV2C) * XMVectorGetZ(oEdge1C) - XMVectorGetY(oDeltaUV1C) * XMVectorGetZ(oEdge2C)),
+					1.0f
+				);
+
+				XMVECTOR oVTangentA = XMLoadFloat4(&oTangentA);
+				XMVECTOR oVTangentB = XMLoadFloat4(&oTangentB);
+				XMVECTOR oVTangentC = XMLoadFloat4(&oTangentC);
+
+				oVTangentA = XMVector3Normalize(oVTangentA);
+				oVTangentB = XMVector3Normalize(oVTangentB);
+				oVTangentC = XMVector3Normalize(oVTangentC);
+
+				XMStoreFloat4(&rTangentA, oVTangentA);
+				XMStoreFloat4(&rTangentB, oVTangentB);
+				XMStoreFloat4(&rTangentC, oVTangentC);
+			}
+			if (false)
+			{
+				// Reference : http://www.thetenthplanet.de/archives/1180
+			}
+		}
+	}
+
 
 	free(oGLTFBinData);
 	oGLTFStream.close();
@@ -270,8 +384,8 @@ void D3DMesh::LoadShaders()
 
 void D3DMesh::CreateGPUBuffers()
 {
-	UINT uiVertexBufferSize = m_oMeshPositionData.size + m_oMeshNormalData.size + m_oMeshUVData.size;
-	UINT uiVertexStride = m_oMeshPositionData.stride + m_oMeshNormalData.stride + m_oMeshUVData.stride;
+	UINT uiVertexBufferSize = m_oMeshPositionData.size   + m_oMeshNormalData.size   + m_oMeshTangentData.size   + m_oMeshUVData.size;
+	UINT uiVertexStride =     m_oMeshPositionData.stride + m_oMeshNormalData.stride + m_oMeshTangentData.stride + m_oMeshUVData.stride;
 
 	char* oVertexData = (char*)malloc(uiVertexBufferSize);
 	assert(oVertexData != nullptr);
@@ -294,6 +408,12 @@ void D3DMesh::CreateGPUBuffers()
 
 		memcpy(
 			oVertexDataIt + m_oMeshPositionData.stride + m_oMeshNormalData.stride,
+			m_oMeshTangentData.ptr + i * m_oMeshTangentData.stride,
+			m_oMeshTangentData.stride
+		);
+
+		memcpy(
+			oVertexDataIt + m_oMeshPositionData.stride + m_oMeshNormalData.stride + m_oMeshTangentData.stride,
 			m_oMeshUVData.ptr + i * m_oMeshUVData.stride,
 			m_oMeshUVData.stride);
 
@@ -479,6 +599,11 @@ void D3DMesh::InitializeDebug(ID3D12Device5* a_pDevice, bool a_bUsesRayTracing)
 	m_oMeshNormalData.ptr = new char[m_oMeshNormalData.size];
 	m_oMeshNormalData.count = 3;
 
+	m_oMeshTangentData.size = sizeof(float) * 4 * 3;
+	m_oMeshTangentData.stride = sizeof(float) * 4;
+	m_oMeshTangentData.ptr = new char[m_oMeshTangentData.size];
+	m_oMeshTangentData.count = 3;
+
 	m_oMeshIndicesData.size = sizeof(UINT16) * 3;
 	m_oMeshIndicesData.stride = sizeof(UINT16);
 	m_oMeshIndicesData.ptr = new char[m_oMeshIndicesData.size];
@@ -508,10 +633,17 @@ void D3DMesh::InitializeDebug(ID3D12Device5* a_pDevice, bool a_bUsesRayTracing)
 		0, 0, 1.0f
 	};
 
+	float tangent[12] = {
+		1.0f, 0, 0, 1.0f,
+		1.0f, 0, 0, 1.0f,
+		1.0f, 0, 0, 1.0f
+	};
+
 	UINT16 vIndex[3] = { 0, 1, 2 };
 
 	memcpy(m_oMeshPositionData.ptr, pos, sizeof(pos));
 	memcpy(m_oMeshNormalData.ptr, normal, sizeof(normal));
+	memcpy(m_oMeshTangentData.ptr, tangent, sizeof(tangent));
 	memcpy(m_oMeshIndicesData.ptr, vIndex, sizeof(vIndex));
 
 	CreateGPUBuffers();

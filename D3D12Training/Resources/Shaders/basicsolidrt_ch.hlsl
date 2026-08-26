@@ -76,6 +76,7 @@ RT_SHADER_SIGNATURE(basicsolidrt)
     //payload.color = float4(normal, 0); // These are object-space normals
     //payload.color = float4(worldNormal, 0); // These are world-space normals
     //payload.color = Albedo.SampleLevel(LinearSampler, uv * 10, 0);
-    //payload.color *= Albedo.SampleLevel(LinearSampler, uv, 0) + Normal.SampleLevel(LinearSampler, uv, 0);
-    payload.color = float4(SampleNormal(uv, 0), 1);
+    //payload.color *= Albedo.SampleLevel(LinearSampler, uv, 0);
+    payload.color *= Albedo.SampleLevel(LinearSampler, uv, 0) + Normal.SampleLevel(LinearSampler, uv, 0);
+    //payload.color = float4(SampleNormal(uv, 0), 1);
 }

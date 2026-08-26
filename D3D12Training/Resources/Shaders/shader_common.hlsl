@@ -30,12 +30,13 @@ struct OcclusionPayload
     int iIsOccluded;
 };
 
-// Shader between Raster and RT
+// Shared between Raster and RT
 struct Vertex
 {
     float3 position : POSITION;
-    float3 normal : TEXCOORD;
-    float2 uv : TEXCOORD2;
+    float3 normal   : NORMAL;
+    float4 tangent  : TANGENT;
+    float2 uv       : TEXCOORD;
 };
 
 cbuffer InstanceData : register(b1, space0)
